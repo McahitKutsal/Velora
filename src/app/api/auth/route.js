@@ -29,6 +29,9 @@ export async function POST(req) {
     });
   } catch (e) {
     console.error('Auth error:', e);
-    return NextResponse.json({ error: 'Authentication failed' }, { status: 401 });
+    return NextResponse.json(
+      { error: e?.message || 'Authentication failed' },
+      { status: 401 }
+    );
   }
 }
