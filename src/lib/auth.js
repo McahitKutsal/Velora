@@ -28,5 +28,7 @@ export function verifySession(token) {
 export function getUserFromRequest(req) {
   const auth = req.headers.get('authorization');
   if (!auth || !auth.startsWith('Bearer ')) return null;
-  return verifySession(auth.slice(7));
+  const payload = verifySession(auth.slice(7));
+  if (!payload || payload.userId == null) return null;
+  return payload;
 }
