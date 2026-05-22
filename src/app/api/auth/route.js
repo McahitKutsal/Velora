@@ -20,7 +20,7 @@ export async function POST(req) {
     const payload = ticket.getPayload();
     const { sub: googleId, email, name, picture } = payload;
 
-    const user = upsertGoogleUser({ googleId, email, name, picture });
+    const user = await upsertGoogleUser({ googleId, email, name, picture });
     const token = signSession(user);
 
     return NextResponse.json({

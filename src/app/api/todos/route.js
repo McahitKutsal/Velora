@@ -9,14 +9,14 @@ function unauthorized() {
 export async function GET(req) {
   const user = getUserFromRequest(req);
   if (!user) return unauthorized();
-  return NextResponse.json(listTodos(user.userId));
+  return NextResponse.json(await listTodos(user.userId));
 }
 
 export async function POST(req) {
   const user = getUserFromRequest(req);
   if (!user) return unauthorized();
   const body = await req.json();
-  return NextResponse.json(createTodo(user.userId, body));
+  return NextResponse.json(await createTodo(user.userId, body));
 }
 
 export async function PUT(req) {
@@ -24,12 +24,12 @@ export async function PUT(req) {
   if (!user) return unauthorized();
   const body = await req.json();
   const { id, ...rest } = body;
-  return NextResponse.json(updateTodo(user.userId, id, rest));
+  return NextResponse.json(await updateTodo(user.userId, id, rest));
 }
 
 export async function DELETE(req) {
   const user = getUserFromRequest(req);
   if (!user) return unauthorized();
   const { id } = await req.json();
-  return NextResponse.json(deleteTodo(user.userId, id));
+  return NextResponse.json(await deleteTodo(user.userId, id));
 }
