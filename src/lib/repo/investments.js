@@ -1,16 +1,15 @@
 import { getDb } from '../db';
 
-function rowToInvestment(db, row) {
-  const lots = db
-    .prepare(
-      'SELECT id, buy_price, quantity, buy_date FROM investment_lots WHERE investment_id = ? ORDER BY position ASC, id ASC'
-    )
-    .all(row.id)
-    .map((l) => ({
-      buy_price: l.buy_price,
-      quantity: l.quantity,
-      buy_date: l.buy_date || null,
-    }));
+async function rowToInvestment(db, row) {
+  const lotsResult = await db.execute({
+    sql: 'SELECT id, buy_price, quantity, buy_date FROM investment_lots WHERE investment_id = ? ORDER BY position ASC, id ASC',
+    args: [row.id],
+  });
+  const lots = lotsResult.rows.map((l) => ({
+    buy_price: l.buy_price,
+    quantity: l.quantity,
+    buy_date: l.buy_date || null,
+  }));
 
   const totalQty = lots.reduce((s, l) => s + l.quantity, 0);
   const totalCost = lots.reduce((s, l) => s + l.buy_price * l.quantity, 0);
@@ -29,73 +28,90 @@ function rowToInvestment(db, row) {
   };
 }
 
-export function listInvestments(userId) {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      'SELECT * FROM investments WHERE user_id = ? ORDER BY sort_order ASC, datetime(created_at) DESC, id DESC'
-    )
-    .all(userId);
-  return rows.map((r) => rowToInvestment(db, r));
+export async function listInvestments(userId) {
+  const db = await getDb();
+  const result = await db.execute({
+    sql: 'SELECT * FROM investments WHERE user_id = ? ORDER BY sort_order ASC, datetime(created_at) DESC, id DESC',
+    args: [userId],
+  });
+  return Promise.all(result.rows.map((r) => rowToInvestment(db, r)));
 }
 
-export function createInvestment(userId, payload) {
-  const db = getDb();
+export async function createInvestment(userId, payload) {
+  const db = await getDb();
   const { name, type, symbol, notes, lots } = payload;
 
-  const insert = db.prepare(
-    'INSERT INTO investments (user_id, name, type, symbol, notes, sort_order) VALUES (?, ?, ?, ?, ?, ?)'
-  );
-  const nextOrder = db
-    .prepare('SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM investments WHERE user_id = ?')
-    .get(userId).next;
+  const orderRes = await db.execute({
+    sql: 'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM investments WHERE user_id = ?',
+    args: [userId],
+  });
+  const nextOrder = Number(orderRes.rows[0].next);
 
-  const insertLot = db.prepare(
-    'INSERT INTO investment_lots (investment_id, buy_price, quantity, buy_date, position) VALUES (?, ?, ?, ?, ?)'
-  );
-
-  const tx = db.transaction(() => {
-    const info = insert.run(userId, name, type, symbol || null, notes || null, nextOrder);
+  const tx = await db.transaction('write');
+  try {
+    const info = await tx.execute({
+      sql: 'INSERT INTO investments (user_id, name, type, symbol, notes, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [userId, name, type, symbol || null, notes || null, nextOrder],
+    });
     const id = info.lastInsertRowid;
-    (lots || []).forEach((lot, i) => {
-      insertLot.run(id, Number(lot.buy_price) || 0, Number(lot.quantity) || 0, lot.buy_date || null, i);
-    });
-    return id;
-  });
 
-  const id = tx();
-  return { id: String(id) };
+    for (let i = 0; i < (lots || []).length; i++) {
+      const lot = lots[i];
+      await tx.execute({
+        sql: 'INSERT INTO investment_lots (investment_id, buy_price, quantity, buy_date, position) VALUES (?, ?, ?, ?, ?)',
+        args: [id, Number(lot.buy_price) || 0, Number(lot.quantity) || 0, lot.buy_date || null, i],
+      });
+    }
+
+    await tx.commit();
+    return { id: String(id) };
+  } catch (e) {
+    await tx.rollback();
+    throw e;
+  }
 }
 
-export function updateInvestment(userId, id, payload) {
-  const db = getDb();
+export async function updateInvestment(userId, id, payload) {
+  const db = await getDb();
   const { name, type, symbol, notes, lots } = payload;
 
-  const update = db.prepare(
-    'UPDATE investments SET name = ?, type = ?, symbol = ?, notes = ? WHERE id = ? AND user_id = ?'
-  );
-  const deleteLots = db.prepare('DELETE FROM investment_lots WHERE investment_id = ?');
-  const insertLot = db.prepare(
-    'INSERT INTO investment_lots (investment_id, buy_price, quantity, buy_date, position) VALUES (?, ?, ?, ?, ?)'
-  );
-
-  const tx = db.transaction(() => {
-    const result = update.run(name, type, symbol || null, notes || null, id, userId);
-    if (result.changes === 0) return false;
-    deleteLots.run(id);
-    (lots || []).forEach((lot, i) => {
-      insertLot.run(id, Number(lot.buy_price) || 0, Number(lot.quantity) || 0, lot.buy_date || null, i);
+  const tx = await db.transaction('write');
+  try {
+    const upd = await tx.execute({
+      sql: 'UPDATE investments SET name = ?, type = ?, symbol = ?, notes = ? WHERE id = ? AND user_id = ?',
+      args: [name, type, symbol || null, notes || null, id, userId],
     });
-    return true;
-  });
+    if (upd.rowsAffected === 0) {
+      await tx.rollback();
+      return { success: false };
+    }
 
-  return { success: tx() };
+    await tx.execute({
+      sql: 'DELETE FROM investment_lots WHERE investment_id = ?',
+      args: [id],
+    });
+
+    for (let i = 0; i < (lots || []).length; i++) {
+      const lot = lots[i];
+      await tx.execute({
+        sql: 'INSERT INTO investment_lots (investment_id, buy_price, quantity, buy_date, position) VALUES (?, ?, ?, ?, ?)',
+        args: [id, Number(lot.buy_price) || 0, Number(lot.quantity) || 0, lot.buy_date || null, i],
+      });
+    }
+
+    await tx.commit();
+    return { success: true };
+  } catch (e) {
+    await tx.rollback();
+    throw e;
+  }
 }
 
-export function deleteInvestment(userId, id) {
-  const db = getDb();
-  const result = db
-    .prepare('DELETE FROM investments WHERE id = ? AND user_id = ?')
-    .run(id, userId);
-  return { success: result.changes > 0 };
+export async function deleteInvestment(userId, id) {
+  const db = await getDb();
+  const result = await db.execute({
+    sql: 'DELETE FROM investments WHERE id = ? AND user_id = ?',
+    args: [id, userId],
+  });
+  return { success: result.rowsAffected > 0 };
 }

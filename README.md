@@ -1,6 +1,6 @@
 # Velora
 
-Yatırım ve görev takip uygulaması. Next.js 15 (App Router) + Material UI 7 + SQLite (better-sqlite3) ile yazıldı.
+Yatırım ve görev takip uygulaması. Next.js 15 (App Router) + Material UI 7 + libSQL/SQLite (Turso) ile yazıldı.
 
 ## Özellikler
 
@@ -9,27 +9,69 @@ Yatırım ve görev takip uygulaması. Next.js 15 (App Router) + Material UI 7 +
 - **Yapılacaklar:** Öncelik, kategori, son tarih, optimistic toggle.
 - **Ayarlar:** Karanlık mod (kalıcı), para birimi (TRY/USD/EUR), Google profili, çıkış.
 - **Auth:** Google OAuth + JWT (localStorage).
-- **DB:** Yerel SQLite dosyası (`data/velora.db`), WAL mode.
+- **DB:** Lokal `file:` veya Turso (libSQL). Schema ilk çalıştırmada otomatik oluşur.
 
-## Kurulum
+## Lokal Kurulum
 
 ```bash
 npm install
 cp .env.example .env
-# .env dosyasına GOOGLE_CLIENT_ID, NEXT_PUBLIC_GOOGLE_CLIENT_ID, JWT_SECRET ekle
+# .env içindeki GOOGLE_CLIENT_ID, NEXT_PUBLIC_GOOGLE_CLIENT_ID, JWT_SECRET doldur
 npm run dev
 ```
 
-Tarayıcıdan `http://localhost:3000` adresini aç. Veritabanı ilk çalıştırmada `data/velora.db` olarak otomatik oluşturulur.
+`http://localhost:3000` aç. Veritabanı ilk çalıştırmada `./data/velora.db` olarak oluşturulur (TURSO_DATABASE_URL set edilmemişse).
+
+## Vercel + Turso Deploy
+
+Vercel'in serverless dosya sistemi read-only olduğundan SQLite dosyası kullanılamaz. Turso (libSQL) ile aynı SQL uyumluluğu korunur.
+
+### 1) Turso DB oluştur
+
+```bash
+# Turso CLI kur
+curl -sSfL https://get.tur.so/install.sh | bash
+
+# Giriş yap
+turso auth signup   # veya: turso auth login
+
+# DB oluştur
+turso db create velora
+
+# Bağlantı URL'i
+turso db show velora --url
+# çıktı: libsql://velora-<org>.turso.io
+
+# Auth token oluştur (uzun ömürlü)
+turso db tokens create velora
+# çıktı: ey...
+```
+
+### 2) Vercel'e bağla
+
+1. https://vercel.com/new → GitHub repo'sunu (Velora) seç.
+2. **Environment Variables** bölümünde şunları ekle:
+   - `GOOGLE_CLIENT_ID` — Google OAuth Client ID
+   - `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — aynı değer
+   - `JWT_SECRET` — uzun rastgele string
+   - `TURSO_DATABASE_URL` — `libsql://...turso.io`
+   - `TURSO_AUTH_TOKEN` — Turso token'ı
+3. **Deploy**.
+
+### 3) Google OAuth origin'i ekle
+
+Deploy sonrası aldığın Vercel URL'sini (örn. `https://velora.vercel.app`) Google Cloud Console'da OAuth client'a **Authorized JavaScript origins** olarak ekle. Custom domain kullanacaksan onu da ekle.
 
 ## Environment Değişkenleri
 
-| Değişken | Açıklama |
-|---|---|
-| `GOOGLE_CLIENT_ID` | Google OAuth client ID (sunucu doğrulaması) |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Aynı ID, istemci tarafı için |
-| `JWT_SECRET` | JWT imzalama için uzun rastgele dize |
-| `DATABASE_PATH` | (opsiyonel) SQLite dosya yolu, varsayılan `./data/velora.db` |
+| Değişken | Zorunlu | Açıklama |
+|---|---|---|
+| `GOOGLE_CLIENT_ID` | ✓ | Sunucu tarafı token doğrulaması |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | ✓ | İstemci sign-in butonu (aynı değer) |
+| `JWT_SECRET` | ✓ | Session JWT imza anahtarı |
+| `TURSO_DATABASE_URL` | prod | libsql:// URL — production için Turso |
+| `TURSO_AUTH_TOKEN` | prod | Turso DB token |
+| `DATABASE_PATH` | – | Lokal SQLite dosya yolu (varsayılan `./data/velora.db`) |
 
 ## Yapı
 
@@ -50,8 +92,8 @@ src/
 │   └── page.jsx            # Dashboard /
 ├── components/             # AppShell, Layout, Sidebar, settings ctx
 ├── contexts/               # AuthContext
-├── lib/                    # db, auth, apiClient, repo/*
-├── services/               # priceService (Yahoo)
+├── lib/                    # db (libSQL), auth (JWT), apiClient, repo/*
+├── services/               # priceService (Yahoo via /api/fetch-url proxy)
 ├── stores/                 # Zustand investment/todo
 ├── utils/                  # currency
 └── theme.js
