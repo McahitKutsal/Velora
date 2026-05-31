@@ -44,33 +44,97 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <ShowChartIcon color="primary" />
-          <Typography variant="h6" noWrap fontWeight="bold">
+      <Toolbar sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'linear-gradient(135deg, #4da8da 0%, #2e7eaa 100%)',
+              boxShadow: '0 2px 8px rgba(77, 168, 218, 0.35)',
+            }}
+          >
+            <ShowChartIcon sx={{ color: '#fff', fontSize: 20 }} />
+          </Box>
+          <Typography
+            variant="h6"
+            noWrap
+            sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}
+          >
             Velora
           </Typography>
         </Box>
       </Toolbar>
-      <List sx={{ flexGrow: 1 }}>
-        {menuItems.map((item) => (
-          <ListItemButton
-            key={item.text}
-            selected={pathname === item.path}
-            onClick={() => handleNavigate(item.path)}
-            sx={{ mx: 1, borderRadius: 2 }}
-          >
-            <ListItemIcon>{item.icon}</ListItemIcon>
-            <ListItemText primary={item.text} />
-          </ListItemButton>
-        ))}
+      <List sx={{ flexGrow: 1, px: 1, py: 0.5 }}>
+        {menuItems.map((item) => {
+          const selected = pathname === item.path;
+          return (
+            <ListItemButton
+              key={item.text}
+              selected={selected}
+              onClick={() => handleNavigate(item.path)}
+              sx={{
+                my: 0.25,
+                position: 'relative',
+                pl: 2,
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  left: 0,
+                  top: '22%',
+                  height: '56%',
+                  width: 3,
+                  borderRadius: '0 4px 4px 0',
+                  backgroundColor: 'primary.main',
+                  opacity: selected ? 1 : 0,
+                  transition: 'opacity 0.2s ease',
+                },
+              }}
+            >
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText
+                primary={item.text}
+                primaryTypographyProps={{
+                  fontWeight: selected ? 600 : 500,
+                  fontSize: '0.9rem',
+                }}
+              />
+            </ListItemButton>
+          );
+        })}
       </List>
       {user && (
         <>
           <Divider />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 2 }}>
-            <Avatar src={user.picture} alt={user.name} sx={{ width: 32, height: 32 }} />
-            <Typography variant="body2" noWrap>{user.name}</Typography>
+            <Box sx={{ position: 'relative' }}>
+              <Avatar src={user.picture} alt={user.name} sx={{ width: 36, height: 36 }} />
+              <Box
+                sx={{
+                  position: 'absolute',
+                  right: -1,
+                  bottom: -1,
+                  width: 10,
+                  height: 10,
+                  borderRadius: '50%',
+                  bgcolor: 'success.main',
+                  border: '2px solid',
+                  borderColor: 'background.paper',
+                }}
+              />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="body2" noWrap fontWeight={600}>
+                {user.name}
+              </Typography>
+              <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
+                {user.email}
+              </Typography>
+            </Box>
           </Box>
         </>
       )}

@@ -20,14 +20,31 @@ export default function Layout({ children }) {
             backgroundColor: 'background.paper',
             color: 'text.primary',
           }}
-          elevation={1}
+          elevation={0}
         >
           <Toolbar>
-            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 2 }}>
+            <IconButton edge="start" onClick={() => setMobileOpen(true)} sx={{ mr: 1.5 }}>
               <MenuIcon />
             </IconButton>
-            <ShowChartIcon color="primary" sx={{ mr: 1 }} />
-            <Typography variant="h6" noWrap fontWeight="bold">
+            <Box
+              sx={{
+                width: 28,
+                height: 28,
+                borderRadius: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'linear-gradient(135deg, #4da8da 0%, #2e7eaa 100%)',
+                mr: 1,
+              }}
+            >
+              <ShowChartIcon sx={{ color: '#fff', fontSize: 18 }} />
+            </Box>
+            <Typography
+              variant="h6"
+              noWrap
+              sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}
+            >
               Velora
             </Typography>
           </Toolbar>

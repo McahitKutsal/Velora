@@ -12,7 +12,10 @@ body {
 }
 
 body {
-  font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  font-family: 'Inter', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 a {
