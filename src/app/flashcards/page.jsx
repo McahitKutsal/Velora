@@ -35,8 +35,10 @@ import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import SchoolIcon from '@mui/icons-material/School';
 import BoltIcon from '@mui/icons-material/Bolt';
+import KeyboardIcon from '@mui/icons-material/Keyboard';
 import { ResponsiveContainer, BarChart, Bar, Tooltip as RTooltip, XAxis, Cell } from 'recharts';
 import useFlashcardStore from '@/stores/flashcardStore';
+import CyrillicKeyboard from '@/components/CyrillicKeyboard';
 import { DECK_COLORS } from '@/lib/flashcardConstants';
 
 const emptyForm = { name: '', description: '', color: DECK_COLORS[0] };
@@ -255,11 +257,29 @@ export default function FlashcardsPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [showKeyboard, setShowKeyboard] = useState(false);
+  const [activeField, setActiveField] = useState('name');
 
   useEffect(() => {
     fetchDecks();
     fetchStats();
   }, [fetchDecks, fetchStats]);
+
+  // Russian keyboard preference is shared with the study screen.
+  useEffect(() => {
+    setShowKeyboard(localStorage.getItem('velora_cyrillic') === '1');
+  }, []);
+
+  const toggleKeyboard = () => {
+    setShowKeyboard((v) => {
+      const next = !v;
+      localStorage.setItem('velora_cyrillic', next ? '1' : '0');
+      return next;
+    });
+  };
+
+  const kbInsert = (ch) => setForm((f) => ({ ...f, [activeField]: (f[activeField] || '') + ch }));
+  const kbBackspace = () => setForm((f) => ({ ...f, [activeField]: (f[activeField] || '').slice(0, -1) }));
 
   const handleOpen = (deck = null) => {
     if (deck) {
@@ -269,6 +289,7 @@ export default function FlashcardsPage() {
       setEditId(null);
       setForm(emptyForm);
     }
+    setActiveField('name');
     setOpen(true);
   };
 
@@ -379,12 +400,23 @@ export default function FlashcardsPage() {
 
       {/* Create / edit deck */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth fullScreen={isSmall}>
-        <DialogTitle>{editId ? 'Desteyi Düzenle' : 'Yeni Deste'}</DialogTitle>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <span>{editId ? 'Desteyi Düzenle' : 'Yeni Deste'}</span>
+          <Chip
+            icon={<KeyboardIcon fontSize="small" />}
+            label="Rusça klavye"
+            size="small"
+            onClick={toggleKeyboard}
+            color={showKeyboard ? 'primary' : 'default'}
+            variant={showKeyboard ? 'filled' : 'outlined'}
+          />
+        </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
           <TextField
             label="Deste adı"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
+            onFocus={() => setActiveField('name')}
             fullWidth
             autoFocus
           />
@@ -392,6 +424,7 @@ export default function FlashcardsPage() {
             label="Açıklama (isteğe bağlı)"
             value={form.description}
             onChange={(e) => setForm({ ...form, description: e.target.value })}
+            onFocus={() => setActiveField('description')}
             fullWidth
             multiline
             rows={2}
@@ -421,6 +454,7 @@ export default function FlashcardsPage() {
               ))}
             </Box>
           </Box>
+          {showKeyboard && <CyrillicKeyboard onChar={kbInsert} onBackspace={kbBackspace} />}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>İptal</Button>

@@ -34,7 +34,9 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
 import StyleIcon from '@mui/icons-material/Style';
+import KeyboardIcon from '@mui/icons-material/Keyboard';
 import useFlashcardStore from '@/stores/flashcardStore';
+import CyrillicKeyboard from '@/components/CyrillicKeyboard';
 import { DECK_COLORS, STATUS_META } from '@/lib/flashcardConstants';
 
 const emptyCard = { front: '', back: '', notes: '' };
@@ -92,6 +94,31 @@ export default function DeckDetailPage() {
   const [form, setForm] = useState(emptyCard);
   const [bulk, setBulk] = useState('');
   const [menu, setMenu] = useState({ anchor: null, card: null });
+  const [showKeyboard, setShowKeyboard] = useState(false);
+  const [activeField, setActiveField] = useState('front');
+
+  // Russian keyboard preference is shared with the study screen.
+  useEffect(() => {
+    setShowKeyboard(localStorage.getItem('velora_cyrillic') === '1');
+  }, []);
+
+  const toggleKeyboard = () => {
+    setShowKeyboard((v) => {
+      const next = !v;
+      localStorage.setItem('velora_cyrillic', next ? '1' : '0');
+      return next;
+    });
+  };
+
+  // On-screen keyboard writes to whichever field last had focus.
+  const kbInsert = (ch) => {
+    if (activeField === 'bulk') setBulk((v) => v + ch);
+    else setForm((f) => ({ ...f, [activeField]: (f[activeField] || '') + ch }));
+  };
+  const kbBackspace = () => {
+    if (activeField === 'bulk') setBulk((v) => v.slice(0, -1));
+    else setForm((f) => ({ ...f, [activeField]: (f[activeField] || '').slice(0, -1) }));
+  };
 
   const deck = useMemo(() => decks.find((d) => String(d.id) === String(deckId)), [decks, deckId]);
 
@@ -107,6 +134,7 @@ export default function DeckDetailPage() {
     setForm(emptyCard);
     setBulk('');
     setTab(0);
+    setActiveField('front');
     setOpen(true);
   };
 
@@ -114,6 +142,7 @@ export default function DeckDetailPage() {
     setEditId(card.id);
     setForm({ front: card.front, back: card.back, notes: card.notes || '' });
     setTab(0);
+    setActiveField('front');
     setOpen(true);
   };
 
@@ -309,9 +338,26 @@ export default function DeckDetailPage() {
 
       {/* Add / edit card */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth fullScreen={isSmall}>
-        <DialogTitle>{editId ? 'Kartı Düzenle' : 'Kart Ekle'}</DialogTitle>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+          <span>{editId ? 'Kartı Düzenle' : 'Kart Ekle'}</span>
+          <Chip
+            icon={<KeyboardIcon fontSize="small" />}
+            label="Rusça klavye"
+            size="small"
+            onClick={toggleKeyboard}
+            color={showKeyboard ? 'primary' : 'default'}
+            variant={showKeyboard ? 'filled' : 'outlined'}
+          />
+        </DialogTitle>
         {!editId && (
-          <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ px: 3 }}>
+          <Tabs
+            value={tab}
+            onChange={(_, v) => {
+              setTab(v);
+              setActiveField(v === 1 ? 'bulk' : 'front');
+            }}
+            sx={{ px: 3 }}
+          >
             <Tab label="Tekli" />
             <Tab label="Toplu" />
           </Tabs>
@@ -323,6 +369,7 @@ export default function DeckDetailPage() {
                 label="Ön yüz (soru)"
                 value={form.front}
                 onChange={(e) => setForm({ ...form, front: e.target.value })}
+                onFocus={() => setActiveField('front')}
                 fullWidth
                 multiline
                 minRows={2}
@@ -332,6 +379,7 @@ export default function DeckDetailPage() {
                 label="Arka yüz (cevap)"
                 value={form.back}
                 onChange={(e) => setForm({ ...form, back: e.target.value })}
+                onFocus={() => setActiveField('back')}
                 fullWidth
                 multiline
                 minRows={2}
@@ -340,6 +388,7 @@ export default function DeckDetailPage() {
                 label="Not (isteğe bağlı)"
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                onFocus={() => setActiveField('notes')}
                 fullWidth
                 multiline
                 minRows={1}
@@ -354,6 +403,7 @@ export default function DeckDetailPage() {
               <TextField
                 value={bulk}
                 onChange={(e) => setBulk(e.target.value)}
+                onFocus={() => setActiveField('bulk')}
                 fullWidth
                 multiline
                 minRows={6}
@@ -366,6 +416,7 @@ export default function DeckDetailPage() {
               </Typography>
             </>
           )}
+          {showKeyboard && <CyrillicKeyboard onChar={kbInsert} onBackspace={kbBackspace} />}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>İptal</Button>
