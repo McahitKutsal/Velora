@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Box,
   Card,
@@ -8,6 +9,7 @@ import {
   Grid,
   Typography,
   Chip,
+  Button,
   CircularProgress,
 } from '@mui/material';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
@@ -16,6 +18,8 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import StyleIcon from '@mui/icons-material/Style';
+import BoltIcon from '@mui/icons-material/Bolt';
 import {
   PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend,
@@ -23,6 +27,7 @@ import {
 } from 'recharts';
 import useInvestmentStore from '@/stores/investmentStore';
 import useTodoStore from '@/stores/todoStore';
+import useFlashcardStore from '@/stores/flashcardStore';
 import { fetchAllPrices, fetchPriceHistory } from '@/services/priceService';
 import { formatCurrency, getPriceKey, convertBuyPrice } from '@/utils/currency';
 import { useAppSettings } from '@/components/AppSettingsContext';
@@ -39,9 +44,11 @@ const TYPE_LABELS = {
 const COLORS = ['#1976d2', '#f57c00', '#fdd835', '#4caf50', '#9c27b0', '#00bcd4', '#e91e63', '#607d8b'];
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { currency } = useAppSettings();
   const { investments, loading: loadingInvestments, fetchInvestments } = useInvestmentStore();
   const { todos, loading: loadingTodos, fetchTodos } = useTodoStore();
+  const { stats: flashStats, fetchStats: fetchFlashStats } = useFlashcardStore();
   const [prices, setPrices] = useState({});
   const [rates, setRates] = useState(null);
   const [priceHistories, setPriceHistories] = useState(null);
@@ -52,7 +59,8 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchInvestments();
     fetchTodos();
-  }, [fetchInvestments, fetchTodos]);
+    fetchFlashStats();
+  }, [fetchInvestments, fetchTodos, fetchFlashStats]);
 
   useEffect(() => {
     if (investments.length > 0) {
@@ -605,8 +613,8 @@ export default function DashboardPage() {
           </Card>
         </Grid>
 
-        <Grid size={{ xs: 12 }}>
-          <Card>
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{ height: '100%' }}>
             <CardContent>
               <Typography variant="h6" gutterBottom>
                 Aktif Görevler
@@ -647,6 +655,70 @@ export default function DashboardPage() {
                 <Typography color="text.secondary" sx={{ py: 4, textAlign: 'center' }}>
                   Tüm görevler tamamlandı!
                 </Typography>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        <Grid size={{ xs: 12, md: 6 }}>
+          <Card sx={{ height: '100%' }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <StyleIcon sx={{ color: '#4da8da' }} />
+                <Typography variant="h6">Kart Tekrarı</Typography>
+              </Box>
+              {flashStats && flashStats.totalCards > 0 ? (
+                <>
+                  <Box sx={{ display: 'flex', gap: 3, mb: 2.5 }}>
+                    <Box>
+                      <Typography variant="h4" fontWeight="bold" color={flashStats.due > 0 ? 'primary.main' : 'text.primary'}>
+                        {flashStats.due}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        tekrara hazır
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="h4" fontWeight="bold">
+                        {flashStats.reviewedToday}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        bugün çalışıldı
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="h4" fontWeight="bold">
+                        {flashStats.streak}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        gün serisi
+                      </Typography>
+                    </Box>
+                  </Box>
+                  {flashStats.due > 0 ? (
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      startIcon={<BoltIcon />}
+                      onClick={() => router.push('/flashcards/all/study')}
+                    >
+                      Çalışmaya Başla ({flashStats.due})
+                    </Button>
+                  ) : (
+                    <Typography color="text.secondary" sx={{ py: 1, textAlign: 'center' }}>
+                      Bugünlük tüm kartlar güncel 🎉
+                    </Typography>
+                  )}
+                </>
+              ) : (
+                <Box sx={{ textAlign: 'center', py: 3 }}>
+                  <Typography color="text.secondary" sx={{ mb: 2 }}>
+                    Henüz kart yok. Aralıklı tekrarla öğrenmeye başla.
+                  </Typography>
+                  <Button variant="outlined" onClick={() => router.push('/flashcards')}>
+                    Kartlara Git
+                  </Button>
+                </Box>
               )}
             </CardContent>
           </Card>

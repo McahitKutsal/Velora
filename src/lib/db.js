@@ -65,6 +65,42 @@ const SCHEMA_STATEMENTS = [
     created_at    TEXT    NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE INDEX IF NOT EXISTS idx_todos_user ON todos(user_id)`,
+  `CREATE TABLE IF NOT EXISTS decks (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    name         TEXT    NOT NULL,
+    description  TEXT,
+    color        TEXT,
+    created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_decks_user ON decks(user_id)`,
+  `CREATE TABLE IF NOT EXISTS flashcards (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id        INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    deck_id        INTEGER NOT NULL REFERENCES decks(id) ON DELETE CASCADE,
+    front          TEXT    NOT NULL,
+    back           TEXT    NOT NULL,
+    notes          TEXT,
+    repetitions    INTEGER NOT NULL DEFAULT 0,
+    ease_factor    REAL    NOT NULL DEFAULT 2.5,
+    interval_days  INTEGER NOT NULL DEFAULT 0,
+    due_date       TEXT    NOT NULL DEFAULT (date('now')),
+    last_reviewed  TEXT,
+    lapses         INTEGER NOT NULL DEFAULT 0,
+    created_at     TEXT    NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_flashcards_deck ON flashcards(deck_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_flashcards_user_due ON flashcards(user_id, due_date)`,
+  `CREATE TABLE IF NOT EXISTS flashcard_reviews (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    card_id       INTEGER NOT NULL REFERENCES flashcards(id) ON DELETE CASCADE,
+    deck_id       INTEGER REFERENCES decks(id) ON DELETE SET NULL,
+    rating        TEXT    NOT NULL,
+    interval_days INTEGER NOT NULL DEFAULT 0,
+    reviewed_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_reviews_user ON flashcard_reviews(user_id, reviewed_at)`,
 ];
 
 async function init(client) {

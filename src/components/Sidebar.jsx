@@ -17,6 +17,7 @@ import {
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
 import ChecklistIcon from '@mui/icons-material/Checklist';
+import StyleIcon from '@mui/icons-material/Style';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +28,7 @@ const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
   { text: 'Yatırımlar', icon: <ShowChartIcon />, path: '/investments' },
   { text: 'Yapılacaklar', icon: <ChecklistIcon />, path: '/todos' },
+  { text: 'Kartlar', icon: <StyleIcon />, path: '/flashcards' },
   { text: 'Ayarlar', icon: <SettingsIcon />, path: '/settings' },
 ];
 
@@ -71,7 +73,9 @@ export default function Sidebar({ mobileOpen, onClose }) {
       </Toolbar>
       <List sx={{ flexGrow: 1, px: 1, py: 0.5 }}>
         {menuItems.map((item) => {
-          const selected = pathname === item.path;
+          const selected =
+            pathname === item.path ||
+            (item.path !== '/' && pathname.startsWith(`${item.path}/`));
           return (
             <ListItemButton
               key={item.text}
