@@ -19,6 +19,7 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import CloseIcon from '@mui/icons-material/Close';
 import ReplayIcon from '@mui/icons-material/Replay';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -76,10 +77,9 @@ function buildOptions(current, pool, key) {
   return shuffle([current[key], ...distractors]);
 }
 
-// Kart arka planına bulanık + karartılmış görsel koyan katman (içerik üstte kalır).
-// Yazının okunması için görsel soluk ve hafif bulanık verilir.
+// Kart arka planına NET görseli koyan katman (bulanık değil). Okunaklık,
+// yazının arkasındaki yarı saydam zeminle (Readable) sağlanır.
 function CardBackdrop({ imageUrl, show }) {
-  if (!imageUrl || !show) return null;
   return (
     <Box
       aria-hidden
@@ -87,15 +87,38 @@ function CardBackdrop({ imageUrl, show }) {
         position: 'absolute',
         inset: 0,
         zIndex: 0,
-        backgroundImage: `url("${imageUrl}")`,
+        backgroundImage: imageUrl ? `url("${imageUrl}")` : 'none',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
-        filter: 'blur(3px)',
-        transform: 'scale(1.08)',
-        opacity: 0.32,
+        opacity: show && imageUrl ? 1 : 0,
+        transition: 'opacity 0.4s ease',
         pointerEvents: 'none',
       }}
     />
+  );
+}
+
+// Görsel açıkken yazının arkasına yarı saydam + hafif bulanık zemin koyar.
+function Readable({ show, children, sx }) {
+  return (
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-block',
+        borderRadius: 1.5,
+        transition: 'background-color 0.3s ease, padding 0.3s ease',
+        ...(show && {
+          px: 1.25,
+          py: 0.5,
+          bgcolor: (t) => alpha(t.palette.background.paper, 0.62),
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+        }),
+        ...sx,
+      }}
+    >
+      {children}
+    </Box>
   );
 }
 
@@ -176,8 +199,24 @@ function FlipCard({ prompt, answer, notes, promptIsRu, flipped, color, onClick, 
             Soru
           </Typography>
           <ImageEyeButton imageUrl={imageUrl} show={showImage} onToggle={onToggleImage} />
-          <Box sx={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
-            <Term text={prompt} isRu={promptIsRu} align="center" />
+          <Box
+            sx={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              px: 2,
+              zIndex: 1,
+              display: 'flex',
+              justifyContent: 'center',
+              // Görsel açılınca yazı animasyonla kartın üstüne kayar.
+              top: showImage ? 44 : '50%',
+              transform: showImage ? 'translateY(0)' : 'translateY(-50%)',
+              transition: 'top 0.45s cubic-bezier(0.4, 0.2, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0.2, 0.2, 1)',
+            }}
+          >
+            <Readable show={showImage}>
+              <Term text={prompt} isRu={promptIsRu} align="center" />
+            </Readable>
           </Box>
           <Typography variant="caption" color="text.disabled" sx={{ position: 'absolute', bottom: 12, zIndex: 1 }}>
             Cevabı görmek için tıkla ya da Boşluk'a bas
@@ -228,7 +267,9 @@ function StaticCard({ prompt, answer, notes, promptIsRu, revealed, color, verdic
           Soru
         </Typography>
         <Box sx={{ mb: revealed ? 2 : 0 }}>
-          <Term text={prompt} isRu={promptIsRu} />
+          <Readable show={showImage}>
+            <Term text={prompt} isRu={promptIsRu} />
+          </Readable>
         </Box>
         {revealed && (
           <>
@@ -243,7 +284,9 @@ function StaticCard({ prompt, answer, notes, promptIsRu, revealed, color, verdic
                 Cevap
               </Typography>
             </Box>
-            <Term text={answer} isRu={!promptIsRu} />
+            <Readable show={showImage}>
+              <Term text={answer} isRu={!promptIsRu} />
+            </Readable>
             {notes && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, whiteSpace: 'pre-wrap' }}>
                 {notes}
