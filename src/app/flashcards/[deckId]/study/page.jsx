@@ -261,7 +261,8 @@ function StudySession() {
   const load = useCallback(async () => {
     setLoading(true);
     const data = await fetchStudyQueue(deckId, cram);
-    const cards = (data?.cards || []);
+    // Kartları her oturumda karıştır ki hep aynı sırayla gelmesin.
+    const cards = shuffle(data?.cards || []);
     setQueue(cards);
     setPool(data?.pool || []);
     totalRef.current = cards.length;
