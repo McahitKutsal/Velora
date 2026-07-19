@@ -22,6 +22,7 @@ import {
   Divider,
   CircularProgress,
   Tooltip,
+  InputAdornment,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -37,9 +38,13 @@ import StyleIcon from '@mui/icons-material/Style';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import useFlashcardStore from '@/stores/flashcardStore';
 import CyrillicKeyboard from '@/components/CyrillicKeyboard';
+import SpeakButton from '@/components/SpeakButton';
 import { DECK_COLORS, STATUS_META } from '@/lib/flashcardConstants';
 
 const emptyCard = { front: '', back: '', notes: '' };
+
+// İlk harfi büyük yaz (Kiril ve Latin için toUpperCase yeterli).
+const capFirst = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
 function parseBulk(text) {
   return text
@@ -113,7 +118,7 @@ export default function DeckDetailPage() {
   // On-screen keyboard writes to whichever field last had focus.
   const kbInsert = (ch) => {
     if (activeField === 'bulk') setBulk((v) => v + ch);
-    else setForm((f) => ({ ...f, [activeField]: (f[activeField] || '') + ch }));
+    else setForm((f) => ({ ...f, [activeField]: capFirst((f[activeField] || '') + ch) }));
   };
   const kbBackspace = () => {
     if (activeField === 'bulk') setBulk((v) => v.slice(0, -1));
@@ -287,13 +292,16 @@ export default function DeckDetailPage() {
                           <Typography fontWeight={600} sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                             {card.front}
                           </Typography>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', mt: 0.25 }}
-                          >
-                            {card.back}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mt: 0.25 }}>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                            >
+                              {card.back}
+                            </Typography>
+                            <SpeakButton text={card.back} sx={{ p: 0.25 }} />
+                          </Box>
                           <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', mt: 1, flexWrap: 'wrap' }}>
                             <Chip
                               size="small"
@@ -368,7 +376,7 @@ export default function DeckDetailPage() {
               <TextField
                 label="Ön yüz (soru)"
                 value={form.front}
-                onChange={(e) => setForm({ ...form, front: e.target.value })}
+                onChange={(e) => setForm({ ...form, front: capFirst(e.target.value) })}
                 onFocus={() => setActiveField('front')}
                 fullWidth
                 multiline
@@ -378,16 +386,25 @@ export default function DeckDetailPage() {
               <TextField
                 label="Arka yüz (cevap)"
                 value={form.back}
-                onChange={(e) => setForm({ ...form, back: e.target.value })}
+                onChange={(e) => setForm({ ...form, back: capFirst(e.target.value) })}
                 onFocus={() => setActiveField('back')}
                 fullWidth
                 multiline
                 minRows={2}
+                slotProps={{
+                  input: {
+                    endAdornment: form.back.trim() ? (
+                      <InputAdornment position="end" sx={{ alignSelf: 'flex-start', mt: 1 }}>
+                        <SpeakButton text={form.back} />
+                      </InputAdornment>
+                    ) : null,
+                  },
+                }}
               />
               <TextField
                 label="Not (isteğe bağlı)"
                 value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                onChange={(e) => setForm({ ...form, notes: capFirst(e.target.value) })}
                 onFocus={() => setActiveField('notes')}
                 fullWidth
                 multiline

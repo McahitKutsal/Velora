@@ -29,6 +29,7 @@ import QuizIcon from '@mui/icons-material/Quiz';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import useFlashcardStore from '@/stores/flashcardStore';
 import CyrillicKeyboard from '@/components/CyrillicKeyboard';
+import SpeakButton from '@/components/SpeakButton';
 import { RATINGS, RATING_META, previewIntervals, formatInterval } from '@/lib/srs';
 
 /* ------------------------- helpers ------------------------- */
@@ -129,9 +130,12 @@ function FlipCard({ front, back, notes, flipped, color, onClick }) {
           <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18 }}>
             Cevap
           </Typography>
-          <Typography variant="h5" align="center" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-            {back}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+            <Typography variant="h5" align="center" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
+              {back}
+            </Typography>
+            <SpeakButton text={back} />
+          </Box>
           {notes && (
             <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2, whiteSpace: 'pre-wrap' }}>
               {notes}
@@ -167,9 +171,12 @@ function StaticCard({ front, back, notes, revealed, color, verdict }) {
               Cevap
             </Typography>
           </Box>
-          <Typography variant="h5" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-            {back}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Typography variant="h5" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
+              {back}
+            </Typography>
+            <SpeakButton text={back} />
+          </Box>
           {notes && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, whiteSpace: 'pre-wrap' }}>
               {notes}
