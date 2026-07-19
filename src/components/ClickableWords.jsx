@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Box, Popover, Typography, CircularProgress } from '@mui/material';
 import SpeakButton from '@/components/SpeakButton';
+import { transliterate } from '@/lib/translit';
 
 // Aynı kelime tekrar tıklanınca dış servise gitmemek için istemci önbelleği.
 const cache = new Map();
@@ -95,6 +96,11 @@ export default function ClickableWords({ text, from = 'ru', to = 'tr', lang = 'r
             </Typography>
             <SpeakButton text={word} lang={lang} />
           </Box>
+          {transliterate(word) && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              {transliterate(word)}
+            </Typography>
+          )}
           {loading ? (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
               <CircularProgress size={14} />

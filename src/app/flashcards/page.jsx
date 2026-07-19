@@ -33,6 +33,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import SchoolIcon from '@mui/icons-material/School';
 import BoltIcon from '@mui/icons-material/Bolt';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
@@ -71,6 +72,49 @@ function StatTile({ icon, label, value, color }) {
           </Typography>
         </Box>
       </CardContent>
+    </Card>
+  );
+}
+
+// Günlük hedef: bugün çalışılan / hedef, tıklayınca hedef düzenlenir.
+function DailyGoalTile({ reviewed, goal, onEdit }) {
+  const done = goal > 0 && reviewed >= goal;
+  const pct = goal > 0 ? Math.min(100, (reviewed / goal) * 100) : 0;
+  const color = done ? '#22c55e' : '#4da8da';
+  return (
+    <Card sx={{ height: '100%' }}>
+      <CardActionArea onClick={onEdit} sx={{ height: '100%' }}>
+        <CardContent sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1.75 }}>
+          <Box
+            sx={{
+              width: 42,
+              height: 42,
+              borderRadius: 2,
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color,
+              bgcolor: (t) => (t.palette.mode === 'dark' ? `${color}22` : `${color}18`),
+            }}
+          >
+            {done ? <TaskAltIcon /> : <TrackChangesIcon />}
+          </Box>
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography variant="h5" fontWeight="bold" lineHeight={1.1}>
+              {reviewed} <Typography component="span" variant="body2" color="text.secondary">/ {goal}</Typography>
+            </Typography>
+            <Typography variant="caption" color="text.secondary" noWrap>
+              Günlük hedef
+            </Typography>
+            <LinearProgress
+              variant="determinate"
+              value={pct}
+              sx={{ mt: 0.75, height: 5, borderRadius: 3, bgcolor: 'action.hover', '& .MuiLinearProgress-bar': { bgcolor: color, borderRadius: 3 } }}
+            />
+          </Box>
+        </CardContent>
+      </CardActionArea>
     </Card>
   );
 }
@@ -259,11 +303,32 @@ export default function FlashcardsPage() {
   const [form, setForm] = useState(emptyForm);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [activeField, setActiveField] = useState('name');
+  const [dailyGoal, setDailyGoal] = useState(20);
+  const [goalOpen, setGoalOpen] = useState(false);
+  const [goalInput, setGoalInput] = useState('20');
 
   useEffect(() => {
     fetchDecks();
     fetchStats();
   }, [fetchDecks, fetchStats]);
+
+  // Günlük hedef tercihini hatırla.
+  useEffect(() => {
+    const saved = Number(localStorage.getItem('velora_daily_goal'));
+    if (saved > 0) setDailyGoal(saved);
+  }, []);
+
+  const openGoalEditor = () => {
+    setGoalInput(String(dailyGoal));
+    setGoalOpen(true);
+  };
+
+  const saveGoal = () => {
+    const n = Math.max(1, Math.min(500, Math.round(Number(goalInput) || 0)));
+    setDailyGoal(n);
+    localStorage.setItem('velora_daily_goal', String(n));
+    setGoalOpen(false);
+  };
 
   // Russian keyboard preference is shared with the study screen.
   useEffect(() => {
@@ -351,7 +416,7 @@ export default function FlashcardsPage() {
           <StatTile icon={<SchoolIcon />} label="Bugün tekrar" value={stats?.due ?? '—'} color="#4da8da" />
         </Grid>
         <Grid size={{ xs: 6, sm: 3 }}>
-          <StatTile icon={<TaskAltIcon />} label="Bugün çalışılan" value={stats?.reviewedToday ?? '—'} color="#22c55e" />
+          <DailyGoalTile reviewed={stats?.reviewedToday ?? 0} goal={dailyGoal} onEdit={openGoalEditor} />
         </Grid>
         <Grid size={{ xs: 6, sm: 3 }}>
           <StatTile icon={<LocalFireDepartmentIcon />} label="Gün serisi" value={stats ? `${stats.streak}` : '—'} color="#f59e0b" />
@@ -460,6 +525,32 @@ export default function FlashcardsPage() {
           <Button onClick={handleClose}>İptal</Button>
           <Button variant="contained" onClick={handleSave} disabled={!form.name.trim() || saving}>
             {saving ? <CircularProgress size={20} color="inherit" /> : editId ? 'Güncelle' : 'Oluştur'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Günlük hedef düzenleme */}
+      <Dialog open={goalOpen} onClose={() => setGoalOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Günlük hedef</DialogTitle>
+        <DialogContent sx={{ pt: '16px !important' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Her gün kaç kart tekrar etmeyi hedefliyorsun?
+          </Typography>
+          <TextField
+            label="Hedef (kart/gün)"
+            type="number"
+            value={goalInput}
+            onChange={(e) => setGoalInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && saveGoal()}
+            fullWidth
+            autoFocus
+            slotProps={{ htmlInput: { min: 1, max: 500 } }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setGoalOpen(false)}>İptal</Button>
+          <Button variant="contained" onClick={saveGoal}>
+            Kaydet
           </Button>
         </DialogActions>
       </Dialog>

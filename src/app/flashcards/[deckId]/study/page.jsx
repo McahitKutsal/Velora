@@ -27,10 +27,14 @@ import CelebrationIcon from '@mui/icons-material/Celebration';
 import FlipIcon from '@mui/icons-material/Flip';
 import QuizIcon from '@mui/icons-material/Quiz';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
 import useFlashcardStore from '@/stores/flashcardStore';
 import CyrillicKeyboard from '@/components/CyrillicKeyboard';
 import SpeakButton from '@/components/SpeakButton';
 import ClickableWords from '@/components/ClickableWords';
+import { speak } from '@/lib/speech';
+import { transliterate } from '@/lib/translit';
 import { RATINGS, RATING_META, previewIntervals, formatInterval } from '@/lib/srs';
 
 /* ------------------------- helpers ------------------------- */
@@ -58,21 +62,44 @@ function isTypedCorrect(typed, back) {
   return answers.includes(guess);
 }
 
-function buildOptions(current, pool) {
-  const seen = new Set([current.back]);
+// key: cevabın hangi alandan geldiği ('back' normal, 'front' ters mod).
+function buildOptions(current, pool, key) {
+  const seen = new Set([current[key]]);
   const distractors = [];
   for (const p of shuffle(pool)) {
     if (distractors.length >= 3) break;
-    if (seen.has(p.back)) continue;
-    seen.add(p.back);
-    distractors.push(p.back);
+    if (seen.has(p[key])) continue;
+    seen.add(p[key]);
+    distractors.push(p[key]);
   }
-  return shuffle([current.back, ...distractors]);
+  return shuffle([current[key], ...distractors]);
+}
+
+/* Bir terimi gösterir: Rusça ise tıklanabilir kelimeler + okunuş + seslendirme,
+   Türkçe ise düz metin. Kart yüzlerinde tekrar kullanılır. */
+function Term({ text, isRu, align = 'left' }) {
+  const reading = isRu ? transliterate(text) : null;
+  const justify = align === 'center' ? 'center' : 'flex-start';
+  return (
+    <Box sx={{ width: '100%' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: justify, gap: 0.5 }}>
+        <Typography variant="h5" align={align} sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
+          {isRu ? <ClickableWords text={text} /> : text}
+        </Typography>
+        {isRu && <SpeakButton text={text} />}
+      </Box>
+      {reading && (
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: align, mt: 0.25 }}>
+          {reading}
+        </Typography>
+      )}
+    </Box>
+  );
 }
 
 /* ------------------------- flip card ------------------------- */
 
-function FlipCard({ front, back, notes, flipped, color, onClick }) {
+function FlipCard({ prompt, answer, notes, promptIsRu, flipped, color, onClick }) {
   return (
     <Box sx={{ perspective: '1600px', width: '100%', cursor: 'pointer' }} onClick={onClick}>
       <Box
@@ -103,12 +130,7 @@ function FlipCard({ front, back, notes, flipped, color, onClick }) {
           <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18 }}>
             Soru
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-            <Typography variant="h5" align="center" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-              <ClickableWords text={front} />
-            </Typography>
-            <SpeakButton text={front} />
-          </Box>
+          <Term text={prompt} isRu={promptIsRu} align="center" />
           <Typography variant="caption" color="text.disabled" sx={{ position: 'absolute', bottom: 12 }}>
             Cevabı görmek için tıkla ya da Boşluk'a bas
           </Typography>
@@ -134,9 +156,7 @@ function FlipCard({ front, back, notes, flipped, color, onClick }) {
           <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18 }}>
             Cevap
           </Typography>
-          <Typography variant="h5" align="center" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-            {back}
-          </Typography>
+          <Term text={answer} isRu={!promptIsRu} align="center" />
           {notes && (
             <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2, whiteSpace: 'pre-wrap' }}>
               {notes}
@@ -150,17 +170,14 @@ function FlipCard({ front, back, notes, flipped, color, onClick }) {
 
 /* ------------------------- static answer card ------------------------- */
 
-function StaticCard({ front, back, notes, revealed, color, verdict }) {
+function StaticCard({ prompt, answer, notes, promptIsRu, revealed, color, verdict }) {
   return (
     <Card sx={{ borderTop: `4px solid ${color}`, p: { xs: 3, sm: 4 } }}>
       <Typography variant="overline" color="text.secondary">
         Soru
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: revealed ? 2 : 0 }}>
-        <Typography variant="h5" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-          <ClickableWords text={front} />
-        </Typography>
-        <SpeakButton text={front} />
+      <Box sx={{ mb: revealed ? 2 : 0 }}>
+        <Term text={prompt} isRu={promptIsRu} />
       </Box>
       {revealed && (
         <>
@@ -175,9 +192,7 @@ function StaticCard({ front, back, notes, revealed, color, verdict }) {
               Cevap
             </Typography>
           </Box>
-          <Typography variant="h5" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-            {back}
-          </Typography>
+          <Term text={answer} isRu={!promptIsRu} />
           {notes && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, whiteSpace: 'pre-wrap' }}>
               {notes}
@@ -229,11 +244,15 @@ function StudySession() {
   const [submitting, setSubmitting] = useState(false);
   const [finished, setFinished] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(false);
+  const [reversed, setReversed] = useState(false); // false: ru→tr, true: tr→ru
+  const [autoPlay, setAutoPlay] = useState(false); // Rusça tarafı otomatik seslendir
   const [tally, setTally] = useState({ reviews: 0, correct: 0, answered: 0, again: 0 });
 
-  // Remember the Russian keyboard preference across sessions.
+  // Remember preferences across sessions.
   useEffect(() => {
     setShowKeyboard(localStorage.getItem('velora_cyrillic') === '1');
+    setReversed(localStorage.getItem('velora_reverse') === '1');
+    setAutoPlay(localStorage.getItem('velora_autoplay') === '1');
   }, []);
 
   const toggleKeyboard = () => {
@@ -244,18 +263,44 @@ function StudySession() {
     });
   };
 
+  const toggleReversed = () => {
+    setReversed((v) => {
+      const next = !v;
+      localStorage.setItem('velora_reverse', next ? '1' : '0');
+      return next;
+    });
+    resetCardState();
+  };
+
+  const toggleAutoPlay = () => {
+    setAutoPlay((v) => {
+      const next = !v;
+      localStorage.setItem('velora_autoplay', next ? '1' : '0');
+      return next;
+    });
+  };
+
   const startRef = useRef(Date.now());
   const totalRef = useRef(0);
 
   const current = queue[0] || null;
-  const uniqueBacks = useMemo(() => new Set(pool.map((p) => p.back)).size, [pool]);
-  const canChoice = uniqueBacks >= 4;
+  // Rusça her zaman kartın "front" tarafıdır; ters modda cevaba düşer.
+  const answerKey = reversed ? 'front' : 'back';
+  const promptText = current ? (reversed ? current.back : current.front) : '';
+  const answerText = current ? current[answerKey] : '';
+  const promptIsRu = !reversed;
+
+  const uniqueAnswers = useMemo(
+    () => new Set(pool.map((p) => p[answerKey])).size,
+    [pool, answerKey]
+  );
+  const canChoice = uniqueAnswers >= 4;
 
   const options = useMemo(() => {
     if (!current || mode !== 'choice') return [];
-    return buildOptions(current, pool);
+    return buildOptions(current, pool, answerKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current?.id, mode]);
+  }, [current?.id, mode, answerKey]);
 
   const intervals = useMemo(() => (current ? previewIntervals(current) : null), [current]);
 
@@ -328,10 +373,22 @@ function StudySession() {
     }
   }, [queue.length, loading, finished, fetchDecks, fetchStats]);
 
+  // Otomatik seslendirme: Rusça taraf ilk kez görününce bir kez oku.
+  const autoSpokeRef = useRef(null);
+  useEffect(() => {
+    if (!autoPlay || !current) return;
+    const ruVisible = reversed ? (mode === 'flip' ? flipped : answered) : true;
+    if (!ruVisible) return;
+    const stamp = `${current.id}:${reversed ? 'a' : 'p'}`;
+    if (autoSpokeRef.current === stamp) return;
+    autoSpokeRef.current = stamp;
+    speak(current.front, 'ru-RU');
+  }, [autoPlay, reversed, mode, flipped, answered, current?.id]);
+
   // Answer handlers for choice/type: record correctness, then reveal.
   const answerChoice = (opt) => {
     if (answered) return;
-    const ok = opt === current.back;
+    const ok = opt === answerText;
     setSelected(opt);
     setVerdict(ok ? 'correct' : 'wrong');
     setAnswered(true);
@@ -340,7 +397,7 @@ function StudySession() {
 
   const submitTyped = () => {
     if (answered || !typed.trim()) return;
-    const ok = isTypedCorrect(typed, current.back);
+    const ok = isTypedCorrect(typed, answerText);
     setVerdict(ok ? 'correct' : 'wrong');
     setAnswered(true);
     setTally((t) => ({ ...t, answered: t.answered + 1, correct: t.correct + (ok ? 1 : 0) }));
@@ -506,7 +563,7 @@ function StudySession() {
       </Box>
 
       {/* Mode selector */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, mb: 3, flexWrap: 'wrap' }}>
         <ToggleButtonGroup value={mode} exclusive onChange={changeMode} size="small">
           <ToggleButton value="flip">
             <FlipIcon fontSize="small" sx={{ mr: 0.5 }} /> {!isSmall && 'Çevir'}
@@ -522,14 +579,37 @@ function StudySession() {
             <KeyboardIcon fontSize="small" sx={{ mr: 0.5 }} /> {!isSmall && 'Yaz'}
           </ToggleButton>
         </ToggleButtonGroup>
+
+        <Tooltip title={reversed ? 'Yön: Türkçe → Rusça' : 'Yön: Rusça → Türkçe'}>
+          <Chip
+            icon={<SwapHorizIcon fontSize="small" />}
+            label={reversed ? 'TR → RU' : 'RU → TR'}
+            size="small"
+            onClick={toggleReversed}
+            color={reversed ? 'primary' : 'default'}
+            variant={reversed ? 'filled' : 'outlined'}
+          />
+        </Tooltip>
+        <Tooltip title={autoPlay ? 'Otomatik seslendirme açık' : 'Otomatik seslendirme kapalı'}>
+          <Chip
+            icon={<VolumeUpRoundedIcon fontSize="small" />}
+            label={!isSmall ? 'Oto ses' : ''}
+            size="small"
+            onClick={toggleAutoPlay}
+            color={autoPlay ? 'primary' : 'default'}
+            variant={autoPlay ? 'filled' : 'outlined'}
+            sx={isSmall ? { '.MuiChip-label': { px: 0.5 } } : undefined}
+          />
+        </Tooltip>
       </Box>
 
       {/* Card */}
       {mode === 'flip' && (
         <>
           <FlipCard
-            front={current.front}
-            back={current.back}
+            prompt={promptText}
+            answer={answerText}
+            promptIsRu={promptIsRu}
             notes={current.notes}
             flipped={flipped}
             color={DECK_ACCENT}
@@ -576,8 +656,9 @@ function StudySession() {
       {mode === 'choice' && (
         <>
           <StaticCard
-            front={current.front}
-            back={current.back}
+            prompt={promptText}
+            answer={answerText}
+            promptIsRu={promptIsRu}
             notes={current.notes}
             revealed={answered}
             color={DECK_ACCENT}
@@ -585,7 +666,7 @@ function StudySession() {
           />
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.25, mt: 3 }}>
             {options.map((opt, i) => {
-              const isCorrect = opt === current.back;
+              const isCorrect = opt === answerText;
               const isSelected = selected === opt;
               let borderColor = 'divider';
               let bg = 'transparent';
@@ -631,7 +712,14 @@ function StudySession() {
                   >
                     {i + 1}
                   </Box>
-                  <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{opt}</Typography>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{opt}</Typography>
+                    {reversed && transliterate(opt) && (
+                      <Typography variant="caption" color="text.secondary">
+                        {transliterate(opt)}
+                      </Typography>
+                    )}
+                  </Box>
                   {answered && isCorrect && <CheckCircleIcon sx={{ color: 'success.main', ml: 'auto' }} />}
                   {answered && isSelected && !isCorrect && <CancelIcon sx={{ color: 'error.main', ml: 'auto' }} />}
                 </Card>
@@ -649,8 +737,9 @@ function StudySession() {
       {mode === 'type' && (
         <>
           <StaticCard
-            front={current.front}
-            back={current.back}
+            prompt={promptText}
+            answer={answerText}
+            promptIsRu={promptIsRu}
             notes={current.notes}
             revealed={answered}
             color={DECK_ACCENT}
