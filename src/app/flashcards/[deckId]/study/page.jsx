@@ -29,14 +29,11 @@ import QuizIcon from '@mui/icons-material/Quiz';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
-import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
-import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded';
 import useFlashcardStore from '@/stores/flashcardStore';
 import CyrillicKeyboard from '@/components/CyrillicKeyboard';
 import SpeakButton from '@/components/SpeakButton';
 import ClickableWords from '@/components/ClickableWords';
 import { speak } from '@/lib/speech';
-import { transliterate } from '@/lib/translit';
 import { RATINGS, RATING_META, previewIntervals, formatInterval } from '@/lib/srs';
 
 /* ------------------------- helpers ------------------------- */
@@ -77,48 +74,16 @@ function buildOptions(current, pool, key) {
   return shuffle([current[key], ...distractors]);
 }
 
-/* Bir terimi gösterir: Rusça ise tıklanabilir kelimeler + okunuş + seslendirme,
-   Türkçe ise düz metin. Okunuş varsayılan gizli; göz butonuyla açılır ve her
-   yeni kelimede yeniden gizlenir. Kart yüzlerinde tekrar kullanılır. */
+/* Bir terimi gösterir: Rusça ise tıklanabilir kelimeler + seslendirme,
+   Türkçe ise düz metin. Kart yüzlerinde tekrar kullanılır. */
 function Term({ text, isRu, align = 'left' }) {
-  const reading = isRu ? transliterate(text) : null;
   const justify = align === 'center' ? 'center' : 'flex-start';
-  const [showReading, setShowReading] = useState(false);
-
-  // Kart/kelime değişince okunuşu tekrar gizle.
-  useEffect(() => {
-    setShowReading(false);
-  }, [text]);
-
   return (
-    <Box sx={{ width: '100%' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: justify, gap: 0.5 }}>
-        <Typography variant="h5" align={align} sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-          {isRu ? <ClickableWords text={text} /> : text}
-        </Typography>
-        {isRu && <SpeakButton text={text} />}
-        {reading && (
-          <Tooltip title={showReading ? 'Okunuşu gizle' : 'Okunuşu göster'}>
-            <IconButton
-              size="small"
-              onClick={() => setShowReading((v) => !v)}
-              aria-label="Okunuşu göster"
-              sx={{ color: showReading ? 'primary.main' : 'text.secondary' }}
-            >
-              {showReading ? (
-                <VisibilityOffRoundedIcon fontSize="small" />
-              ) : (
-                <VisibilityRoundedIcon fontSize="small" />
-              )}
-            </IconButton>
-          </Tooltip>
-        )}
-      </Box>
-      {reading && showReading && (
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: align, mt: 0.25 }}>
-          {reading}
-        </Typography>
-      )}
+    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: justify, gap: 0.5, width: '100%' }}>
+      <Typography variant="h5" align={align} sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
+        {isRu ? <ClickableWords text={text} /> : text}
+      </Typography>
+      {isRu && <SpeakButton text={text} />}
     </Box>
   );
 }
@@ -738,14 +703,7 @@ function StudySession() {
                   >
                     {i + 1}
                   </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{opt}</Typography>
-                    {reversed && transliterate(opt) && (
-                      <Typography variant="caption" color="text.secondary">
-                        {transliterate(opt)}
-                      </Typography>
-                    )}
-                  </Box>
+                  <Typography sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{opt}</Typography>
                   {answered && isCorrect && <CheckCircleIcon sx={{ color: 'success.main', ml: 'auto' }} />}
                   {answered && isSelected && !isCorrect && <CancelIcon sx={{ color: 'error.main', ml: 'auto' }} />}
                 </Card>
