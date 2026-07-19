@@ -30,6 +30,7 @@ import KeyboardIcon from '@mui/icons-material/Keyboard';
 import useFlashcardStore from '@/stores/flashcardStore';
 import CyrillicKeyboard from '@/components/CyrillicKeyboard';
 import SpeakButton from '@/components/SpeakButton';
+import ClickableWords from '@/components/ClickableWords';
 import { RATINGS, RATING_META, previewIntervals, formatInterval } from '@/lib/srs';
 
 /* ------------------------- helpers ------------------------- */
@@ -104,7 +105,7 @@ function FlipCard({ front, back, notes, flipped, color, onClick }) {
           </Typography>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
             <Typography variant="h5" align="center" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-              {front}
+              <ClickableWords text={front} />
             </Typography>
             <SpeakButton text={front} />
           </Box>
@@ -157,7 +158,7 @@ function StaticCard({ front, back, notes, revealed, color, verdict }) {
       </Typography>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: revealed ? 2 : 0 }}>
         <Typography variant="h5" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-          {front}
+          <ClickableWords text={front} />
         </Typography>
         <SpeakButton text={front} />
       </Box>
