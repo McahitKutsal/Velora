@@ -29,6 +29,8 @@ import QuizIcon from '@mui/icons-material/Quiz';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
+import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded';
 import useFlashcardStore from '@/stores/flashcardStore';
 import CyrillicKeyboard from '@/components/CyrillicKeyboard';
 import SpeakButton from '@/components/SpeakButton';
@@ -76,10 +78,18 @@ function buildOptions(current, pool, key) {
 }
 
 /* Bir terimi gösterir: Rusça ise tıklanabilir kelimeler + okunuş + seslendirme,
-   Türkçe ise düz metin. Kart yüzlerinde tekrar kullanılır. */
+   Türkçe ise düz metin. Okunuş varsayılan gizli; göz butonuyla açılır ve her
+   yeni kelimede yeniden gizlenir. Kart yüzlerinde tekrar kullanılır. */
 function Term({ text, isRu, align = 'left' }) {
   const reading = isRu ? transliterate(text) : null;
   const justify = align === 'center' ? 'center' : 'flex-start';
+  const [showReading, setShowReading] = useState(false);
+
+  // Kart/kelime değişince okunuşu tekrar gizle.
+  useEffect(() => {
+    setShowReading(false);
+  }, [text]);
+
   return (
     <Box sx={{ width: '100%' }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: justify, gap: 0.5 }}>
@@ -87,8 +97,24 @@ function Term({ text, isRu, align = 'left' }) {
           {isRu ? <ClickableWords text={text} /> : text}
         </Typography>
         {isRu && <SpeakButton text={text} />}
+        {reading && (
+          <Tooltip title={showReading ? 'Okunuşu gizle' : 'Okunuşu göster'}>
+            <IconButton
+              size="small"
+              onClick={() => setShowReading((v) => !v)}
+              aria-label="Okunuşu göster"
+              sx={{ color: showReading ? 'primary.main' : 'text.secondary' }}
+            >
+              {showReading ? (
+                <VisibilityOffRoundedIcon fontSize="small" />
+              ) : (
+                <VisibilityRoundedIcon fontSize="small" />
+              )}
+            </IconButton>
+          </Tooltip>
+        )}
       </Box>
-      {reading && (
+      {reading && showReading && (
         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: align, mt: 0.25 }}>
           {reading}
         </Typography>
