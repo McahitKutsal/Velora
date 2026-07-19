@@ -102,9 +102,12 @@ function FlipCard({ front, back, notes, flipped, color, onClick }) {
           <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18 }}>
             Soru
           </Typography>
-          <Typography variant="h5" align="center" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-            {front}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+            <Typography variant="h5" align="center" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
+              {front}
+            </Typography>
+            <SpeakButton text={front} />
+          </Box>
           <Typography variant="caption" color="text.disabled" sx={{ position: 'absolute', bottom: 12 }}>
             Cevabı görmek için tıkla ya da Boşluk'a bas
           </Typography>
@@ -130,12 +133,9 @@ function FlipCard({ front, back, notes, flipped, color, onClick }) {
           <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18 }}>
             Cevap
           </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
-            <Typography variant="h5" align="center" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-              {back}
-            </Typography>
-            <SpeakButton text={back} />
-          </Box>
+          <Typography variant="h5" align="center" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
+            {back}
+          </Typography>
           {notes && (
             <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2, whiteSpace: 'pre-wrap' }}>
               {notes}
@@ -155,9 +155,12 @@ function StaticCard({ front, back, notes, revealed, color, verdict }) {
       <Typography variant="overline" color="text.secondary">
         Soru
       </Typography>
-      <Typography variant="h5" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600, mb: revealed ? 2 : 0 }}>
-        {front}
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: revealed ? 2 : 0 }}>
+        <Typography variant="h5" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
+          {front}
+        </Typography>
+        <SpeakButton text={front} />
+      </Box>
       {revealed && (
         <>
           <Divider sx={{ my: 2 }} />
@@ -171,12 +174,9 @@ function StaticCard({ front, back, notes, revealed, color, verdict }) {
               Cevap
             </Typography>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Typography variant="h5" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
-              {back}
-            </Typography>
-            <SpeakButton text={back} />
-          </Box>
+          <Typography variant="h5" sx={{ whiteSpace: 'pre-wrap', fontWeight: 600 }}>
+            {back}
+          </Typography>
           {notes && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, whiteSpace: 'pre-wrap' }}>
               {notes}

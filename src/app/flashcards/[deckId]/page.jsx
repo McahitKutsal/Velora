@@ -289,19 +289,19 @@ export default function DeckDetailPage() {
                     <CardContent sx={{ flex: 1, py: 1.5, '&:last-child': { pb: 1.5 }, minWidth: 0 }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
                         <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography fontWeight={600} sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                            {card.front}
-                          </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, mt: 0.25 }}>
-                            <Typography
-                              variant="body2"
-                              color="text.secondary"
-                              sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                            >
-                              {card.back}
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                            <Typography fontWeight={600} sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                              {card.front}
                             </Typography>
-                            <SpeakButton text={card.back} sx={{ p: 0.25 }} />
+                            <SpeakButton text={card.front} sx={{ p: 0.25 }} />
                           </Box>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', mt: 0.25 }}
+                          >
+                            {card.back}
+                          </Typography>
                           <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', mt: 1, flexWrap: 'wrap' }}>
                             <Chip
                               size="small"
@@ -382,6 +382,15 @@ export default function DeckDetailPage() {
                 multiline
                 minRows={2}
                 autoFocus
+                slotProps={{
+                  input: {
+                    endAdornment: form.front.trim() ? (
+                      <InputAdornment position="end" sx={{ alignSelf: 'flex-start', mt: 1 }}>
+                        <SpeakButton text={form.front} />
+                      </InputAdornment>
+                    ) : null,
+                  },
+                }}
               />
               <TextField
                 label="Arka yüz (cevap)"
@@ -391,15 +400,6 @@ export default function DeckDetailPage() {
                 fullWidth
                 multiline
                 minRows={2}
-                slotProps={{
-                  input: {
-                    endAdornment: form.back.trim() ? (
-                      <InputAdornment position="end" sx={{ alignSelf: 'flex-start', mt: 1 }}>
-                        <SpeakButton text={form.back} />
-                      </InputAdornment>
-                    ) : null,
-                  },
-                }}
               />
               <TextField
                 label="Not (isteğe bağlı)"
