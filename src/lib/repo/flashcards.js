@@ -25,6 +25,7 @@ function mapCardRow(row) {
     front: row.front,
     back: row.back,
     notes: row.notes,
+    image_url: row.image_url || null,
     repetitions: Number(row.repetitions || 0),
     ease_factor: Number(row.ease_factor || 2.5),
     interval_days: Number(row.interval_days || 0),
@@ -161,14 +162,15 @@ export async function createCard(userId, deckId, payload) {
   const db = await getDb();
   await assertDeckOwned(db, userId, deckId);
   const info = await db.execute({
-    sql: `INSERT INTO flashcards (user_id, deck_id, front, back, notes)
-          VALUES (?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO flashcards (user_id, deck_id, front, back, notes, image_url)
+          VALUES (?, ?, ?, ?, ?, ?)`,
     args: [
       userId,
       deckId,
       payload.front,
       payload.back,
       payload.notes || null,
+      payload.image_url || null,
     ],
   });
   return { id: String(info.lastInsertRowid) };
@@ -197,8 +199,8 @@ export async function createCards(userId, deckId, cards) {
 export async function updateCard(userId, id, payload) {
   const db = await getDb();
   const result = await db.execute({
-    sql: 'UPDATE flashcards SET front = ?, back = ?, notes = ? WHERE id = ? AND user_id = ?',
-    args: [payload.front, payload.back, payload.notes || null, id, userId],
+    sql: 'UPDATE flashcards SET front = ?, back = ?, notes = ?, image_url = ? WHERE id = ? AND user_id = ?',
+    args: [payload.front, payload.back, payload.notes || null, payload.image_url || null, id, userId],
   });
   return { success: result.rowsAffected > 0 };
 }

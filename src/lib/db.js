@@ -103,9 +103,23 @@ const SCHEMA_STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS idx_reviews_user ON flashcard_reviews(user_id, reviewed_at)`,
 ];
 
+// Mevcut tabloları güncelleyen eklemeler. Sütun zaten varsa hata verir;
+// "duplicate column" hatasını yutup devam ederiz (idempotent migration).
+const MIGRATION_STATEMENTS = [
+  `ALTER TABLE flashcards ADD COLUMN image_url TEXT`,
+];
+
 async function init(client) {
   for (const sql of SCHEMA_STATEMENTS) {
     await client.execute(sql);
+  }
+  for (const sql of MIGRATION_STATEMENTS) {
+    try {
+      await client.execute(sql);
+    } catch (e) {
+      // Sütun zaten varsa sorun değil; başka bir hataysa yeniden fırlat.
+      if (!/duplicate column/i.test(String(e?.message))) throw e;
+    }
   }
 }
 

@@ -39,9 +39,10 @@ import KeyboardIcon from '@mui/icons-material/Keyboard';
 import useFlashcardStore from '@/stores/flashcardStore';
 import CyrillicKeyboard from '@/components/CyrillicKeyboard';
 import SpeakButton from '@/components/SpeakButton';
+import CardImagePicker from '@/components/CardImagePicker';
 import { DECK_COLORS, STATUS_META } from '@/lib/flashcardConstants';
 
-const emptyCard = { front: '', back: '', notes: '' };
+const emptyCard = { front: '', back: '', notes: '', image_url: null };
 
 // İlk harfi büyük yaz (Kiril ve Latin için toUpperCase yeterli).
 const capFirst = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
@@ -145,7 +146,7 @@ export default function DeckDetailPage() {
 
   const openEdit = (card) => {
     setEditId(card.id);
-    setForm({ front: card.front, back: card.back, notes: card.notes || '' });
+    setForm({ front: card.front, back: card.back, notes: card.notes || '', image_url: card.image_url || null });
     setTab(0);
     setActiveField('front');
     setOpen(true);
@@ -410,6 +411,16 @@ export default function DeckDetailPage() {
                 multiline
                 minRows={1}
               />
+              <Box>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  Arka plan görseli (isteğe bağlı)
+                </Typography>
+                <CardImagePicker
+                  word={form.front}
+                  value={form.image_url}
+                  onChange={(url) => setForm({ ...form, image_url: url })}
+                />
+              </Box>
             </>
           ) : (
             <>

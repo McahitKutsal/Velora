@@ -29,6 +29,8 @@ import QuizIcon from '@mui/icons-material/Quiz';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
+import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
+import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded';
 import useFlashcardStore from '@/stores/flashcardStore';
 import CyrillicKeyboard from '@/components/CyrillicKeyboard';
 import SpeakButton from '@/components/SpeakButton';
@@ -74,6 +76,57 @@ function buildOptions(current, pool, key) {
   return shuffle([current[key], ...distractors]);
 }
 
+// Kart arka planına bulanık + karartılmış görsel koyan katman (içerik üstte kalır).
+// Yazının okunması için görsel soluk ve hafif bulanık verilir.
+function CardBackdrop({ imageUrl, show }) {
+  if (!imageUrl || !show) return null;
+  return (
+    <Box
+      aria-hidden
+      sx={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 0,
+        backgroundImage: `url("${imageUrl}")`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        filter: 'blur(3px)',
+        transform: 'scale(1.08)',
+        opacity: 0.32,
+        pointerEvents: 'none',
+      }}
+    />
+  );
+}
+
+// Arka plan görselini açıp kapatan göz butonu (görsel yoksa görünmez).
+function ImageEyeButton({ imageUrl, show, onToggle }) {
+  if (!imageUrl) return null;
+  return (
+    <Tooltip title={show ? 'Görseli gizle' : 'Görseli göster'}>
+      <IconButton
+        size="small"
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle();
+        }}
+        aria-label="Arka plan görselini aç/kapat"
+        sx={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          zIndex: 2,
+          color: show ? 'primary.main' : 'text.secondary',
+          bgcolor: 'background.paper',
+          '&:hover': { bgcolor: 'action.hover' },
+        }}
+      >
+        {show ? <VisibilityOffRoundedIcon fontSize="small" /> : <VisibilityRoundedIcon fontSize="small" />}
+      </IconButton>
+    </Tooltip>
+  );
+}
+
 /* Bir terimi gösterir: Rusça ise tıklanabilir kelimeler + seslendirme,
    Türkçe ise düz metin. Kart yüzlerinde tekrar kullanılır. */
 function Term({ text, isRu, align = 'left' }) {
@@ -90,7 +143,7 @@ function Term({ text, isRu, align = 'left' }) {
 
 /* ------------------------- flip card ------------------------- */
 
-function FlipCard({ prompt, answer, notes, promptIsRu, flipped, color, onClick }) {
+function FlipCard({ prompt, answer, notes, promptIsRu, flipped, color, onClick, imageUrl, showImage, onToggleImage }) {
   return (
     <Box sx={{ perspective: '1600px', width: '100%', cursor: 'pointer' }} onClick={onClick}>
       <Box
@@ -118,11 +171,15 @@ function FlipCard({ prompt, answer, notes, promptIsRu, flipped, color, onClick }
             borderTop: `4px solid ${color}`,
           }}
         >
-          <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18 }}>
+          <CardBackdrop imageUrl={imageUrl} show={showImage} />
+          <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18, zIndex: 1 }}>
             Soru
           </Typography>
-          <Term text={prompt} isRu={promptIsRu} align="center" />
-          <Typography variant="caption" color="text.disabled" sx={{ position: 'absolute', bottom: 12 }}>
+          <ImageEyeButton imageUrl={imageUrl} show={showImage} onToggle={onToggleImage} />
+          <Box sx={{ position: 'relative', zIndex: 1, width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <Term text={prompt} isRu={promptIsRu} align="center" />
+          </Box>
+          <Typography variant="caption" color="text.disabled" sx={{ position: 'absolute', bottom: 12, zIndex: 1 }}>
             Cevabı görmek için tıkla ya da Boşluk'a bas
           </Typography>
         </Card>
@@ -161,36 +218,40 @@ function FlipCard({ prompt, answer, notes, promptIsRu, flipped, color, onClick }
 
 /* ------------------------- static answer card ------------------------- */
 
-function StaticCard({ prompt, answer, notes, promptIsRu, revealed, color, verdict }) {
+function StaticCard({ prompt, answer, notes, promptIsRu, revealed, color, verdict, imageUrl, showImage, onToggleImage }) {
   return (
-    <Card sx={{ borderTop: `4px solid ${color}`, p: { xs: 3, sm: 4 } }}>
-      <Typography variant="overline" color="text.secondary">
-        Soru
-      </Typography>
-      <Box sx={{ mb: revealed ? 2 : 0 }}>
-        <Term text={prompt} isRu={promptIsRu} />
+    <Card sx={{ position: 'relative', borderTop: `4px solid ${color}`, p: { xs: 3, sm: 4 } }}>
+      <CardBackdrop imageUrl={imageUrl} show={showImage} />
+      <ImageEyeButton imageUrl={imageUrl} show={showImage} onToggle={onToggleImage} />
+      <Box sx={{ position: 'relative', zIndex: 1 }}>
+        <Typography variant="overline" color="text.secondary">
+          Soru
+        </Typography>
+        <Box sx={{ mb: revealed ? 2 : 0 }}>
+          <Term text={prompt} isRu={promptIsRu} />
+        </Box>
+        {revealed && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              {verdict === 'correct' ? (
+                <CheckCircleIcon sx={{ color: 'success.main' }} />
+              ) : verdict === 'wrong' ? (
+                <CancelIcon sx={{ color: 'error.main' }} />
+              ) : null}
+              <Typography variant="overline" color="text.secondary">
+                Cevap
+              </Typography>
+            </Box>
+            <Term text={answer} isRu={!promptIsRu} />
+            {notes && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, whiteSpace: 'pre-wrap' }}>
+                {notes}
+              </Typography>
+            )}
+          </>
+        )}
       </Box>
-      {revealed && (
-        <>
-          <Divider sx={{ my: 2 }} />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            {verdict === 'correct' ? (
-              <CheckCircleIcon sx={{ color: 'success.main' }} />
-            ) : verdict === 'wrong' ? (
-              <CancelIcon sx={{ color: 'error.main' }} />
-            ) : null}
-            <Typography variant="overline" color="text.secondary">
-              Cevap
-            </Typography>
-          </Box>
-          <Term text={answer} isRu={!promptIsRu} />
-          {notes && (
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, whiteSpace: 'pre-wrap' }}>
-              {notes}
-            </Typography>
-          )}
-        </>
-      )}
     </Card>
   );
 }
@@ -237,6 +298,7 @@ function StudySession() {
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [reversed, setReversed] = useState(false); // false: ru→tr, true: tr→ru
   const [autoPlay, setAutoPlay] = useState(false); // Rusça tarafı otomatik seslendir
+  const [showImage, setShowImage] = useState(false); // arka plan görselini göster
   const [tally, setTally] = useState({ reviews: 0, correct: 0, answered: 0, again: 0 });
 
   // Remember preferences across sessions.
@@ -319,6 +381,7 @@ function StudySession() {
     setSelected(null);
     setTyped('');
     setVerdict(null);
+    setShowImage(false); // yeni kartta görsel yine gizli başlasın
   };
 
   // Move to the next card; if rating is "again" the card is requeued.
@@ -605,6 +668,9 @@ function StudySession() {
             flipped={flipped}
             color={DECK_ACCENT}
             onClick={() => setFlipped((f) => !f)}
+            imageUrl={current.image_url}
+            showImage={showImage}
+            onToggleImage={() => setShowImage((v) => !v)}
           />
           <Box sx={{ mt: 3 }}>
             {!flipped ? (
@@ -654,6 +720,9 @@ function StudySession() {
             revealed={answered}
             color={DECK_ACCENT}
             verdict={verdict}
+            imageUrl={current.image_url}
+            showImage={showImage}
+            onToggleImage={() => setShowImage((v) => !v)}
           />
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.25, mt: 3 }}>
             {options.map((opt, i) => {
@@ -728,6 +797,9 @@ function StudySession() {
             revealed={answered}
             color={DECK_ACCENT}
             verdict={verdict}
+            imageUrl={current.image_url}
+            showImage={showImage}
+            onToggleImage={() => setShowImage((v) => !v)}
           />
           <Box sx={{ mt: 3 }}>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
