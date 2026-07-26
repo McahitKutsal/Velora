@@ -16,6 +16,7 @@ import {
   CircularProgress,
   Tooltip,
   Divider,
+  Popover,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -28,6 +29,9 @@ import CelebrationIcon from '@mui/icons-material/Celebration';
 import FlipIcon from '@mui/icons-material/Flip';
 import QuizIcon from '@mui/icons-material/Quiz';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
+import HearingRoundedIcon from '@mui/icons-material/HearingRounded';
+import ReplayCircleFilledRoundedIcon from '@mui/icons-material/ReplayCircleFilledRounded';
+import KeyboardCommandKeyRoundedIcon from '@mui/icons-material/KeyboardCommandKeyRounded';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
@@ -36,6 +40,7 @@ import useFlashcardStore from '@/stores/flashcardStore';
 import CyrillicKeyboard from '@/components/CyrillicKeyboard';
 import SpeakButton from '@/components/SpeakButton';
 import ClickableWords from '@/components/ClickableWords';
+import ExampleSentence from '@/components/ExampleSentence';
 import { speak } from '@/lib/speech';
 import { RATINGS, RATING_META, previewIntervals, formatInterval } from '@/lib/srs';
 
@@ -192,6 +197,11 @@ function FlipCard({ prompt, answer, notes, promptIsRu, flipped, color, onClick, 
             justifyContent: 'center',
             p: 4,
             borderTop: `4px solid ${color}`,
+            bgcolor: 'background.paper',
+            // backface-visibility bazı tarayıcılarda (backdrop-filter/transform ile)
+            // yüzü gizleyemiyor; dönüşün ortasında opacity ile kesin gizle.
+            opacity: flipped ? 0 : 1,
+            transition: 'opacity 0s linear 0.275s',
           }}
         >
           <CardBackdrop imageUrl={imageUrl} show={showImage} />
@@ -238,6 +248,8 @@ function FlipCard({ prompt, answer, notes, promptIsRu, flipped, color, onClick, 
             p: 4,
             borderTop: `4px solid ${color}`,
             bgcolor: 'background.paper',
+            opacity: flipped ? 1 : 0,
+            transition: 'opacity 0s linear 0.275s',
           }}
         >
           <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18 }}>
@@ -330,7 +342,7 @@ function StudySession() {
   const [loading, setLoading] = useState(true);
   const [pool, setPool] = useState([]);
   const [queue, setQueue] = useState([]);
-  const [mode, setMode] = useState('flip'); // flip | choice | type
+  const [mode, setMode] = useState('flip'); // flip | choice | type | listen
   const [flipped, setFlipped] = useState(false);
   const [answered, setAnswered] = useState(false);
   const [selected, setSelected] = useState(null);
@@ -342,6 +354,7 @@ function StudySession() {
   const [reversed, setReversed] = useState(false); // false: ru→tr, true: tr→ru
   const [autoPlay, setAutoPlay] = useState(false); // Rusça tarafı otomatik seslendir
   const [showImage, setShowImage] = useState(false); // arka plan görselini göster
+  const [helpAnchor, setHelpAnchor] = useState(null); // kısayol lejantı
   const [tally, setTally] = useState({ reviews: 0, correct: 0, answered: 0, again: 0 });
 
   // Remember preferences across sessions.
@@ -482,6 +495,15 @@ function StudySession() {
     speak(current.front, 'ru-RU');
   }, [autoPlay, reversed, mode, flipped, answered, current?.id]);
 
+  // Dinleme modu: her yeni kartta Rusça kelimeyi otomatik oku.
+  const listenSpokeRef = useRef(null);
+  useEffect(() => {
+    if (mode !== 'listen' || !current) return;
+    if (listenSpokeRef.current === current.id) return;
+    listenSpokeRef.current = current.id;
+    speak(current.front, 'ru-RU');
+  }, [mode, current?.id]);
+
   // Answer handlers for choice/type: record correctness, then reveal.
   const answerChoice = (opt) => {
     if (answered) return;
@@ -494,7 +516,9 @@ function StudySession() {
 
   const submitTyped = () => {
     if (answered || !typed.trim()) return;
-    const ok = isTypedCorrect(typed, answerText);
+    // Dinleme modunda hep Rusça kelime (front) hedeftir.
+    const target = mode === 'listen' ? current.front : answerText;
+    const ok = isTypedCorrect(typed, target);
     setVerdict(ok ? 'correct' : 'wrong');
     setAnswered(true);
     setTally((t) => ({ ...t, answered: t.answered + 1, correct: t.correct + (ok ? 1 : 0) }));
@@ -509,7 +533,7 @@ function StudySession() {
   useEffect(() => {
     const onKey = (e) => {
       if (finished || loading || !current) return;
-      if (e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName) && mode !== 'type') return;
+      if (e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName) && mode !== 'type' && mode !== 'listen') return;
 
       if (mode === 'flip') {
         if (!flipped && (e.code === 'Space' || e.code === 'Enter')) {
@@ -527,7 +551,7 @@ function StudySession() {
           e.preventDefault();
           continueAfterAnswer();
         }
-      } else if (mode === 'type') {
+      } else if (mode === 'type' || mode === 'listen') {
         if (!answered && e.code === 'Enter') {
           e.preventDefault();
           submitTyped();
@@ -640,6 +664,10 @@ function StudySession() {
     );
   }
 
+  // Son kart cevaplanınca queue bir an boş kalır; "finished" efekti henüz
+  // çalışmadan bu render'da current null olur. Kısa süre hiçbir şey gösterme.
+  if (!current) return null;
+
   return (
     <Box sx={{ maxWidth: 680, mx: 'auto' }}>
       {/* Top bar */}
@@ -675,6 +703,9 @@ function StudySession() {
           <ToggleButton value="type">
             <KeyboardIcon fontSize="small" sx={{ mr: 0.5 }} /> {!isSmall && 'Yaz'}
           </ToggleButton>
+          <ToggleButton value="listen">
+            <HearingRoundedIcon fontSize="small" sx={{ mr: 0.5 }} /> {!isSmall && 'Dinle'}
+          </ToggleButton>
         </ToggleButtonGroup>
 
         <Tooltip title={reversed ? 'Yön: Türkçe → Rusça' : 'Yön: Rusça → Türkçe'}>
@@ -698,7 +729,54 @@ function StudySession() {
             sx={isSmall ? { '.MuiChip-label': { px: 0.5 } } : undefined}
           />
         </Tooltip>
+        <Tooltip title="Klavye kısayolları">
+          <IconButton size="small" onClick={(e) => setHelpAnchor(e.currentTarget)} aria-label="Klavye kısayolları">
+            <KeyboardCommandKeyRoundedIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
       </Box>
+
+      <Popover
+        open={Boolean(helpAnchor)}
+        anchorEl={helpAnchor}
+        onClose={() => setHelpAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Box sx={{ p: 2, minWidth: 220 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1 }}>
+            Klavye kısayolları
+          </Typography>
+          {[
+            ['Boşluk / Enter', 'Cevabı göster (Çevir)'],
+            ['1 – 4', 'Değerlendir (Çevir) / Şık seç (Test)'],
+            ['Enter', 'Kontrol et / Devam (Yaz, Dinle)'],
+          ].map(([keys, desc]) => (
+            <Box key={keys} sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, py: 0.5 }}>
+              <Box
+                component="kbd"
+                sx={{
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  px: 0.75,
+                  py: 0.25,
+                  borderRadius: 0.75,
+                  bgcolor: 'action.hover',
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                }}
+              >
+                {keys}
+              </Box>
+              <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'right' }}>
+                {desc}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      </Popover>
 
       {/* Card */}
       {mode === 'flip' && (
@@ -906,6 +984,120 @@ function StudySession() {
             </Button>
           </Box>
         </>
+      )}
+
+      {mode === 'listen' && (
+        <>
+          <Card sx={{ borderTop: `4px solid ${DECK_ACCENT}`, p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
+            {!answered ? (
+              <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 1 }}>
+                <Typography variant="overline" color="text.secondary">
+                  Dinle
+                </Typography>
+                <IconButton
+                  onClick={() => speak(current.front, 'ru-RU')}
+                  aria-label="Tekrar dinle"
+                  sx={{ color: 'primary.main' }}
+                >
+                  <ReplayCircleFilledRoundedIcon sx={{ fontSize: 72 }} />
+                </IconButton>
+                <Typography variant="body2" color="text.secondary">
+                  Duyduğun Rusça kelimeyi yaz
+                </Typography>
+              </Box>
+            ) : (
+              <>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 1 }}>
+                  {verdict === 'correct' ? (
+                    <CheckCircleIcon sx={{ color: 'success.main' }} />
+                  ) : (
+                    <CancelIcon sx={{ color: 'error.main' }} />
+                  )}
+                  <Typography variant="overline" color="text.secondary">
+                    Cevap
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <Term text={current.front} isRu align="center" />
+                </Box>
+                <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+                  {current.back}
+                </Typography>
+                {current.notes && (
+                  <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
+                    {current.notes}
+                  </Typography>
+                )}
+              </>
+            )}
+          </Card>
+          <Box sx={{ mt: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+              <Chip
+                icon={<KeyboardIcon fontSize="small" />}
+                label="Rusça klavye"
+                size="small"
+                onClick={toggleKeyboard}
+                color={showKeyboard ? 'primary' : 'default'}
+                variant={showKeyboard ? 'filled' : 'outlined'}
+              />
+            </Box>
+            <TextField
+              fullWidth
+              autoFocus
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              placeholder="Duyduğun kelimeyi yaz…"
+              disabled={answered}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !answered) {
+                  e.preventDefault();
+                  submitTyped();
+                }
+              }}
+              slotProps={{
+                input: {
+                  sx: answered
+                    ? {
+                        bgcolor:
+                          verdict === 'correct'
+                            ? `${theme.palette.success.main}14`
+                            : `${theme.palette.error.main}14`,
+                      }
+                    : undefined,
+                },
+              }}
+            />
+            {showKeyboard && (
+              <CyrillicKeyboard
+                disabled={answered}
+                onChar={(ch) => !answered && setTyped((t) => t + ch)}
+                onBackspace={() => !answered && setTyped((t) => t.slice(0, -1))}
+                onEnter={() => (answered ? continueAfterAnswer() : submitTyped())}
+              />
+            )}
+            {answered && verdict === 'wrong' && (
+              <Typography variant="body2" sx={{ mt: 1, color: 'error.main' }}>
+                Senin cevabın: {typed || '—'}
+              </Typography>
+            )}
+            <Button
+              fullWidth
+              variant="contained"
+              size="large"
+              sx={{ mt: 2 }}
+              onClick={answered ? continueAfterAnswer : submitTyped}
+              disabled={submitting || (!answered && !typed.trim())}
+            >
+              {answered ? 'Devam (Enter)' : 'Kontrol Et (Enter)'}
+            </Button>
+          </Box>
+        </>
+      )}
+
+      {/* Kart açıldığında Rusça kelime için örnek cümle (tüm modlarda) */}
+      {current && (flipped || answered) && current.front?.trim() && (
+        <ExampleSentence key={current.id} word={current.front} />
       )}
     </Box>
   );

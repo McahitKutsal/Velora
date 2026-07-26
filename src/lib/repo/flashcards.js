@@ -1,6 +1,9 @@
 import { getDb } from '../db';
 import { schedule, cardStatus, addDays, todayIso } from '../srs';
 
+// Bu kadar çok kez unutulan kart "inatçı" (leech) sayılır.
+export const LEECH_THRESHOLD = 4;
+
 /* ------------------------------------------------------------------ */
 /* Row mappers                                                         */
 /* ------------------------------------------------------------------ */
@@ -35,6 +38,7 @@ function mapCardRow(row) {
     created_at: row.created_at,
   };
   card.status = cardStatus(card);
+  card.leech = card.lapses >= LEECH_THRESHOLD;
   return card;
 }
 
@@ -340,7 +344,7 @@ export async function reviewCard(userId, id, rating) {
 export async function getStats(userId) {
   const db = await getDb();
 
-  const [totals, decks, reviewedToday, breakdown, series, reviewDates] = await Promise.all([
+  const [totals, decks, reviewedToday, breakdown, series, reviewDates, leech, forecast] = await Promise.all([
     db.execute({
       sql: `SELECT
               COUNT(*) AS total,
@@ -379,6 +383,16 @@ export async function getStats(userId) {
             ORDER BY d DESC LIMIT 90`,
       args: [userId],
     }),
+    db.execute({
+      sql: `SELECT COUNT(*) AS c FROM flashcards WHERE user_id = ? AND lapses >= ?`,
+      args: [userId, LEECH_THRESHOLD],
+    }),
+    db.execute({
+      sql: `SELECT due_date AS d, COUNT(*) AS c FROM flashcards
+            WHERE user_id = ? AND due_date <= date('now', '+6 days')
+            GROUP BY due_date`,
+      args: [userId],
+    }),
   ]);
 
   const t = totals.rows[0] || {};
@@ -392,6 +406,24 @@ export async function getStats(userId) {
   for (let i = 13; i >= 0; i -= 1) {
     const d = addDays(today, -i);
     dailySeries.push({ date: d, count: counts[d] || 0 });
+  }
+
+  // 7 günlük vade tahmini: bugüne kadar (vadesi geçmişler dahil) + sonraki 6 gün.
+  const dueByDate = {};
+  forecast.rows.forEach((r) => { dueByDate[r.d] = Number(r.c); });
+  const dueForecast = [];
+  for (let i = 0; i <= 6; i += 1) {
+    const d = addDays(today, i);
+    let count;
+    if (i === 0) {
+      // Bugün: vadesi bugün veya daha önce olan her şey.
+      count = Object.entries(dueByDate)
+        .filter(([date]) => date <= today)
+        .reduce((s, [, c]) => s + c, 0);
+    } else {
+      count = dueByDate[d] || 0;
+    }
+    dueForecast.push({ date: d, count });
   }
 
   // Current streak: consecutive days with reviews, counting back from today
@@ -412,11 +444,13 @@ export async function getStats(userId) {
     newCount: Number(t.new_count || 0),
     reviewedToday: Number(reviewedToday.rows[0]?.c || 0),
     streak,
+    leechCount: Number(leech.rows[0]?.c || 0),
     breakdown: {
       new: Number(b.new_count || 0),
       young: Number(b.young || 0),
       mature: Number(b.mature || 0),
     },
     dailySeries,
+    dueForecast,
   };
 }

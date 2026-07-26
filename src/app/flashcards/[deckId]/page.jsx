@@ -31,6 +31,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import ShuffleIcon from '@mui/icons-material/Shuffle';
@@ -309,9 +310,18 @@ export default function DeckDetailPage() {
                               label={status.label}
                               sx={{ bgcolor: `${status.color}22`, color: status.color, fontWeight: 600 }}
                             />
+                            {card.leech && (
+                              <Chip
+                                size="small"
+                                icon={<LocalFireDepartmentIcon sx={{ fontSize: 14 }} />}
+                                label="İnatçı"
+                                sx={{ bgcolor: '#f43f5e22', color: '#f43f5e', fontWeight: 600 }}
+                              />
+                            )}
                             <Typography variant="caption" color="text.secondary">
                               {formatDue(card.due_date)}
                               {card.repetitions > 0 && ` · ${card.repetitions}× tekrar`}
+                              {card.lapses > 0 && ` · ${card.lapses}× unutuldu`}
                             </Typography>
                           </Box>
                         </Box>

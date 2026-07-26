@@ -171,6 +171,92 @@ function ActivityChart({ series }) {
   );
 }
 
+// Öğrenme aşamaları (yeni/genç/olgun) + 7 günlük vade tahmini + inatçı kart uyarısı.
+function LearningInsights({ stats }) {
+  const theme = useTheme();
+  const stages = [
+    { key: 'new', label: 'Yeni', color: '#22c55e', value: stats.breakdown?.new || 0 },
+    { key: 'young', label: 'Genç', color: '#4da8da', value: stats.breakdown?.young || 0 },
+    { key: 'mature', label: 'Olgun', color: '#a855f7', value: stats.breakdown?.mature || 0 },
+  ];
+  const stageTotal = stages.reduce((s, x) => s + x.value, 0);
+
+  const forecast = (stats.dueForecast || []).map((d, i) => ({
+    ...d,
+    label: i === 0 ? 'Bugün' : new Date(`${d.date}T00:00:00`).toLocaleDateString('tr-TR', { weekday: 'short' }),
+  }));
+  const maxF = Math.max(1, ...forecast.map((d) => d.count));
+
+  return (
+    <Card>
+      <CardContent>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, gap: 1, flexWrap: 'wrap' }}>
+          <Typography variant="h6">Öğrenme Durumu</Typography>
+          {stats.leechCount > 0 && (
+            <Chip
+              size="small"
+              icon={<LocalFireDepartmentIcon sx={{ fontSize: 16 }} />}
+              label={`${stats.leechCount} inatçı kart`}
+              sx={{ bgcolor: '#f43f5e22', color: '#f43f5e', fontWeight: 600 }}
+            />
+          )}
+        </Box>
+
+        {/* Aşama çubuğu */}
+        {stageTotal > 0 && (
+          <Box sx={{ mb: 2.5 }}>
+            <Box sx={{ display: 'flex', height: 12, borderRadius: 6, overflow: 'hidden', bgcolor: 'action.hover' }}>
+              {stages.map((s) => s.value > 0 && (
+                <Box key={s.key} sx={{ width: `${(s.value / stageTotal) * 100}%`, bgcolor: s.color }} />
+              ))}
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, mt: 1, flexWrap: 'wrap' }}>
+              {stages.map((s) => (
+                <Box key={s.key} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: s.color }} />
+                  <Typography variant="caption" color="text.secondary">
+                    {s.label} · <strong>{s.value}</strong>
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* 7 günlük vade tahmini */}
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+          Önümüzdeki 7 gün — vadesi gelen kartlar
+        </Typography>
+        <ResponsiveContainer width="100%" height={120}>
+          <BarChart data={forecast} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+            <XAxis dataKey="label" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+            <RTooltip
+              cursor={{ fill: theme.palette.action.hover }}
+              contentStyle={{
+                borderRadius: 8,
+                border: `1px solid ${theme.palette.divider}`,
+                background: theme.palette.background.paper,
+                fontSize: 12,
+              }}
+              formatter={(v) => [`${v} kart`, '']}
+              labelFormatter={(l) => l}
+            />
+            <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={26}>
+              {forecast.map((d, i) => (
+                <Cell
+                  key={i}
+                  fill={i === 0 ? '#f59e0b' : theme.palette.primary.main}
+                  fillOpacity={d.count > 0 ? 0.35 + 0.65 * (d.count / maxF) : 1}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
 function DeckCard({ deck, onStudy, onEdit, onDelete, busy }) {
   const [anchor, setAnchor] = useState(null);
   const router = useRouter();
@@ -425,9 +511,14 @@ export default function FlashcardsPage() {
           <StatTile icon={<StyleIcon />} label="Toplam kart" value={stats?.totalCards ?? '—'} color="#a855f7" />
         </Grid>
         {stats && stats.totalCards > 0 && (
-          <Grid size={{ xs: 12 }}>
-            <ActivityChart series={stats.dailySeries} />
-          </Grid>
+          <>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <ActivityChart series={stats.dailySeries} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <LearningInsights stats={stats} />
+            </Grid>
+          </>
         )}
       </Grid>
 

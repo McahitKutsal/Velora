@@ -1,9 +1,17 @@
 import AppShell from '@/components/AppShell';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import './globals.css';
 
 export const metadata = {
   title: 'Velora',
-  description: 'Yatırım ve görev takip uygulaması',
+  description: 'Rusça kelime kartları, yatırım ve görev takibi',
+  applicationName: 'Velora',
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Velora' },
+  icons: { icon: '/icon.svg', apple: '/icon.svg' },
+};
+
+export const viewport = {
+  themeColor: '#4da8da',
 };
 
 export default function RootLayout({ children }) {
@@ -19,6 +27,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <AppShell>{children}</AppShell>
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
