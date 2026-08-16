@@ -1,6 +1,15 @@
+import { Inter } from 'next/font/google';
 import AppShell from '@/components/AppShell';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import './globals.css';
+
+// next/font fontu build sırasında indirip kendi sunucumuzdan sunar: render'ı
+// bloklayan Google Fonts isteği ve yazı tipi sıçraması (FOUT) ortadan kalkar.
+const inter = Inter({
+  subsets: ['latin', 'latin-ext', 'cyrillic'],
+  display: 'swap',
+  variable: '--font-sans',
+});
 
 export const metadata = {
   title: 'Velora',
@@ -11,20 +20,15 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: '#4da8da',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f7f6f3' },
+    { media: '(prefers-color-scheme: dark)', color: '#131211' },
+  ],
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="tr">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang="tr" className={inter.variable}>
       <body>
         <AppShell>{children}</AppShell>
         <ServiceWorkerRegister />

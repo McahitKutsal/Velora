@@ -17,12 +17,13 @@ export const RATINGS = ['again', 'hard', 'good', 'easy'];
 const MIN_EF = 1.3;
 const DEFAULT_EF = 2.5;
 
-/** UI metadata for the four rating buttons (Turkish labels). */
+// UI metadata for the four rating buttons (Turkish labels).
+// Renkler temada (palette.data.rating) yaşar; burada yalnız metin/kısayol var.
 export const RATING_META = {
-  again: { label: 'Tekrar', color: '#f43f5e', hotkey: '1' },
-  hard: { label: 'Zor', color: '#f59e0b', hotkey: '2' },
-  good: { label: 'Normal', color: '#4da8da', hotkey: '3' },
-  easy: { label: 'Kolay', color: '#22c55e', hotkey: '4' },
+  again: { label: 'Tekrar', hotkey: '1' },
+  hard: { label: 'Zor', hotkey: '2' },
+  good: { label: 'Normal', hotkey: '3' },
+  easy: { label: 'Kolay', hotkey: '4' },
 };
 
 function clampEf(ef) {

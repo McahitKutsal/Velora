@@ -7,7 +7,6 @@ import {
   Typography,
   Button,
   Card,
-  CardContent,
   IconButton,
   Menu,
   MenuItem,
@@ -41,7 +40,8 @@ import useFlashcardStore from '@/stores/flashcardStore';
 import LangKeyboard from '@/components/LangKeyboard';
 import SpeakButton from '@/components/SpeakButton';
 import CardImagePicker from '@/components/CardImagePicker';
-import { DECK_COLORS, STATUS_META } from '@/lib/flashcardConstants';
+import EmptyState from '@/components/ui/EmptyState';
+import { resolveDeckColor, stageMeta } from '@/lib/flashcardConstants';
 import { getLanguage } from '@/lib/languages';
 
 const emptyCard = { front: '', back: '', notes: '', image_url: null };
@@ -188,7 +188,7 @@ export default function DeckDetailPage() {
     }
   };
 
-  const color = deck?.color || DECK_COLORS[0];
+  const color = resolveDeckColor(deck?.color, theme.palette.mode);
   const canSave =
     tab === 1 && !editId ? bulkParsed.length > 0 : form.front.trim() && form.back.trim();
 
@@ -206,35 +206,17 @@ export default function DeckDetailPage() {
       {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3, flexWrap: 'wrap', gap: 2 }}>
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', minWidth: 0 }}>
-          <Box
-            sx={{
-              width: 44,
-              height: 44,
-              borderRadius: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              background: `linear-gradient(135deg, ${color}, ${color}bb)`,
-              flexShrink: 0,
-            }}
-          >
-            <StyleIcon />
-          </Box>
+          <Box sx={{ width: 12, height: 12, borderRadius: '4px', bgcolor: color, flexShrink: 0 }} />
           <Box sx={{ minWidth: 0 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
-              <Typography variant="h5" fontWeight="bold" noWrap>
+              <Typography variant="h4" component="h1" noWrap>
                 {deck ? deck.name : 'Deste'}
               </Typography>
-              {deck && (
-                <Chip size="small" label={`${language.flag} ${language.label}`} variant="outlined" />
-              )}
+              {deck && <Chip size="small" label={language.label} variant="outlined" />}
             </Box>
-            {deck?.description && (
-              <Typography variant="body2" color="text.secondary" noWrap>
-                {deck.description}
-              </Typography>
-            )}
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {deck?.description || `${cards.length} kart`}
+            </Typography>
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -259,7 +241,7 @@ export default function DeckDetailPage() {
             </span>
           </Tooltip>
           <Button variant="outlined" startIcon={<AddIcon />} onClick={openAdd}>
-            Kart Ekle
+            Kart ekle
           </Button>
         </Box>
       </Box>
@@ -270,80 +252,82 @@ export default function DeckDetailPage() {
           <CircularProgress size={40} />
         </Box>
       ) : cards.length === 0 ? (
-        <Card>
-          <CardContent sx={{ textAlign: 'center', py: 8 }}>
-            <StyleIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1 }} />
-            <Typography variant="h6" gutterBottom>
-              Bu destede henüz kart yok
-            </Typography>
-            <Typography color="text.secondary" sx={{ mb: 3 }}>
-              Tek tek ya da toplu olarak kart ekleyerek başla.
-            </Typography>
+        <EmptyState
+          icon={<StyleIcon />}
+          title="Bu destede henüz kart yok"
+          description="Tek tek ya da toplu olarak kart ekleyerek başla."
+          action={
             <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
-              İlk Kartı Ekle
+              İlk kartı ekle
             </Button>
-          </CardContent>
-        </Card>
+          }
+        />
       ) : (
         <>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          <Typography variant="overline" sx={{ display: 'block', mb: 1.5 }}>
             {cards.length} kart
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {cards.map((card) => {
-              const status = STATUS_META[card.status] || STATUS_META.new;
+              const stage = stageMeta(card.status, theme.palette.mode);
               const busy = busyIds.has(card.id);
               return (
-                <Card key={card.id} sx={{ opacity: busy ? 0.5 : 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'stretch' }}>
-                    <Box sx={{ width: 4, bgcolor: status.color, flexShrink: 0 }} />
-                    <CardContent sx={{ flex: 1, py: 1.5, '&:last-child': { pb: 1.5 }, minWidth: 0 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 1 }}>
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                            <Typography fontWeight={600} sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                              {card.front}
-                            </Typography>
-                            <SpeakButton text={card.front} lang={language.speech} sx={{ p: 0.25 }} />
-                          </Box>
-                          <Typography
-                            variant="body2"
-                            color="text.secondary"
-                            sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', mt: 0.25 }}
-                          >
-                            {card.back}
-                          </Typography>
-                          <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', mt: 1, flexWrap: 'wrap' }}>
-                            <Chip
-                              size="small"
-                              label={status.label}
-                              sx={{ bgcolor: `${status.color}22`, color: status.color, fontWeight: 600 }}
-                            />
-                            {card.leech && (
-                              <Chip
-                                size="small"
-                                icon={<LocalFireDepartmentIcon sx={{ fontSize: 14 }} />}
-                                label="İnatçı"
-                                sx={{ bgcolor: '#f43f5e22', color: '#f43f5e', fontWeight: 600 }}
-                              />
-                            )}
-                            <Typography variant="caption" color="text.secondary">
-                              {formatDue(card.due_date)}
-                              {card.repetitions > 0 && ` · ${card.repetitions}× tekrar`}
-                              {card.lapses > 0 && ` · ${card.lapses}× unutuldu`}
-                            </Typography>
-                          </Box>
-                        </Box>
-                        <IconButton
-                          size="small"
-                          onClick={(e) => setMenu({ anchor: e.currentTarget, card })}
-                          sx={{ alignSelf: 'flex-start' }}
-                          disabled={busy}
-                        >
-                          {busy ? <CircularProgress size={18} /> : <MoreVertIcon fontSize="small" />}
-                        </IconButton>
+                <Card
+                  key={card.id}
+                  sx={{ opacity: busy ? 0.5 : 1, '&:hover': { borderColor: 'primary.main' } }}
+                >
+                  <Box sx={{ display: 'flex', gap: 1.5, p: 2, minWidth: 0 }}>
+                    {/* Aşama göstergesi: renk noktası her zaman yazılı etiketle birlikte */}
+                    <Tooltip title={stage.label}>
+                      <Box
+                        sx={{ width: 8, height: 8, borderRadius: '2px', bgcolor: stage.color, mt: 0.75, flexShrink: 0 }}
+                      />
+                    </Tooltip>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
+                        <Typography sx={{ fontWeight: 650, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {card.front}
+                        </Typography>
+                        <SpeakButton text={card.front} lang={language.speech} sx={{ p: 0.25 }} />
                       </Box>
-                    </CardContent>
+                      <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                      >
+                        {card.back}
+                      </Typography>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mt: 1, flexWrap: 'wrap' }}>
+                        <Typography variant="caption" color="text.secondary">
+                          {stage.label} · {formatDue(card.due_date)}
+                          {card.repetitions > 0 && ` · ${card.repetitions}× tekrar`}
+                          {card.lapses > 0 && ` · ${card.lapses}× unutuldu`}
+                        </Typography>
+                        {card.leech && (
+                          <Chip
+                            size="small"
+                            variant="outlined"
+                            icon={<LocalFireDepartmentIcon sx={{ fontSize: 14 }} />}
+                            label="İnatçı"
+                            sx={{
+                              height: 20,
+                              color: 'error.main',
+                              borderColor: 'error.main',
+                              fontWeight: 650,
+                              '& .MuiChip-icon': { color: 'inherit' },
+                            }}
+                          />
+                        )}
+                      </Box>
+                    </Box>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => setMenu({ anchor: e.currentTarget, card })}
+                      sx={{ alignSelf: 'flex-start' }}
+                      disabled={busy}
+                    >
+                      {busy ? <CircularProgress size={18} /> : <MoreVertIcon fontSize="small" />}
+                    </IconButton>
                   </Box>
                 </Card>
               );
@@ -367,7 +351,7 @@ export default function DeckDetailPage() {
       {/* Add / edit card */}
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth fullScreen={isSmall}>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
-          <span>{editId ? 'Kartı Düzenle' : 'Kart Ekle'}</span>
+          <span>{editId ? 'Kartı düzenle' : 'Kart ekle'}</span>
           <Chip
             icon={<KeyboardIcon fontSize="small" />}
             label={language.keyboardLabel}
@@ -474,7 +458,7 @@ export default function DeckDetailPage() {
             ) : editId ? (
               'Güncelle'
             ) : tab === 1 ? (
-              `${bulkParsed.length} Kart Ekle`
+              `${bulkParsed.length} kart ekle`
             ) : (
               'Ekle'
             )}

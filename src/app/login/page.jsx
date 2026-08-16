@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { Box, Typography, Card, CardContent, CircularProgress, Alert } from '@mui/material';
-import ShowChartIcon from '@mui/icons-material/ShowChart';
 import { useAuth } from '@/contexts/AuthContext';
+import Brand from '@/components/Brand';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -72,16 +72,16 @@ export default function LoginPage() {
             px: 4,
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-            <ShowChartIcon color="primary" sx={{ fontSize: 48 }} />
-            <Typography variant="h4" fontWeight="bold">
-              Velora
+          <Brand size={44} />
+
+          <Box sx={{ textAlign: 'center' }}>
+            <Typography variant="h5" sx={{ mb: 0.75 }}>
+              Tekrar hoş geldin
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Kelime kartların, yatırımların ve görevlerin tek yerde.
             </Typography>
           </Box>
-
-          <Typography variant="body1" color="text.secondary" textAlign="center">
-            Yatırım ve görev takip uygulamasına hoş geldiniz
-          </Typography>
 
           {error && (
             <Alert severity="error" sx={{ width: '100%' }}>

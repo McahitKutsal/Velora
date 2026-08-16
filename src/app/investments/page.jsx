@@ -46,6 +46,8 @@ import useInvestmentStore from '@/stores/investmentStore';
 import { fetchAllPrices, fetchHistoricalPrice } from '@/services/priceService';
 import { formatCurrency, getPriceKey, convertBuyPrice } from '@/utils/currency';
 import { useAppSettings } from '@/components/AppSettingsContext';
+import PageHeader from '@/components/ui/PageHeader';
+import StatTile from '@/components/ui/StatTile';
 
 const INVESTMENT_TYPES = [
   { value: 'stock', label: 'Hisse (BIST)' },
@@ -56,18 +58,15 @@ const INVESTMENT_TYPES = [
   { value: 'forex', label: 'Doviz' },
 ];
 
-const TYPE_COLORS = {
-  stock: 'primary',
-  stock_us: 'info',
-  crypto: 'warning',
-  gold: 'custom',
-  silver: 'custom',
-  forex: 'success',
-};
-
-const CUSTOM_CHIP_STYLES = {
-  gold: { bgcolor: '#FFD70033', color: '#B8860B', borderColor: '#DAA520' },
-  silver: { bgcolor: '#C0C0C033', color: '#6B6B6B', borderColor: '#A9A9A9' },
+// Varlik turu kimligi: kategorik paletten sabit slot. Renk noktasi her zaman
+// turun adiyla birlikte okunur, tek basina anlam tasimaz.
+const TYPE_SLOT = {
+  stock: 0,
+  stock_us: 1,
+  crypto: 2,
+  gold: 3,
+  silver: 4,
+  forex: 5,
 };
 
 const SYMBOL_HINTS = {
@@ -167,6 +166,9 @@ function SortableInvestmentRow({
   lotCostConverted, hasPrices, totalCurrentValue, totalCost,
   expandedRow, setExpandedRow, getTypeLabel, handleOpen, handleDelete,
 }) {
+  const theme = useTheme();
+  const typeColors = theme.palette.data.categorical;
+  const delta = theme.palette.data.delta;
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: inv.id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -212,13 +214,20 @@ function SortableInvestmentRow({
           </Box>
         </TableCell>
         <TableCell>
-          <Chip
-            label={getTypeLabel(inv.type)}
-            size="small"
-            variant={CUSTOM_CHIP_STYLES[inv.type] ? 'outlined' : 'filled'}
-            color={CUSTOM_CHIP_STYLES[inv.type] ? 'default' : (TYPE_COLORS[inv.type] || 'default')}
-            sx={CUSTOM_CHIP_STYLES[inv.type] || {}}
-          />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: '2px',
+                flexShrink: 0,
+                bgcolor: typeColors[TYPE_SLOT[inv.type] ?? 0],
+              }}
+            />
+            <Typography variant="body2" color="text.secondary" noWrap>
+              {getTypeLabel(inv.type)}
+            </Typography>
+          </Box>
         </TableCell>
         <TableCell>
           <Typography variant="body2" fontFamily="monospace">
@@ -243,10 +252,10 @@ function SortableInvestmentRow({
         <TableCell align="right">
           {pnl !== null ? (
             <Box>
-              <Typography fontWeight="bold" color={pnl >= 0 ? 'success.main' : 'error.main'}>
+              <Typography sx={{ fontWeight: 700, color: pnl >= 0 ? delta.up : delta.down }} className="num">
                 {pnl >= 0 ? '+' : ''}{fmt(pnl)}
               </Typography>
-              <Typography variant="caption" color={pnlPercent >= 0 ? 'success.main' : 'error.main'}>
+              <Typography variant="caption" sx={{ color: pnlPercent >= 0 ? delta.up : delta.down }} className="num">
                 {pnlPercent >= 0 ? '+' : ''}{pnlPercent.toFixed(2)}%
               </Typography>
             </Box>
@@ -335,6 +344,7 @@ function SortableInvestmentRow({
 }
 
 export default function InvestmentsPage() {
+  const delta = useTheme().palette.data.delta;
   const { currency } = useAppSettings();
   const fmt = (value) => formatCurrency(value, currency);
   const priceKey = getPriceKey(currency);
@@ -520,73 +530,41 @@ export default function InvestmentsPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1 }}>
-        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-          Yatirimlar
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          {lastUpdate && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
-              Son guncelleme: {lastUpdate.toLocaleTimeString('tr-TR')}
-            </Typography>
-          )}
-          <Tooltip title="Fiyatlari guncelle">
-            <IconButton onClick={refreshPrices} disabled={loadingPrices}>
-              {loadingPrices ? <CircularProgress size={24} /> : <RefreshIcon />}
-            </IconButton>
-          </Tooltip>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()} size="small">
-            Yeni Yatirim
-          </Button>
-        </Box>
-      </Box>
+      <PageHeader
+        title="Yatirimlar"
+        subtitle={lastUpdate ? `Son guncelleme ${lastUpdate.toLocaleTimeString('tr-TR')}` : null}
+        actions={
+          <>
+            <Tooltip title="Fiyatlari guncelle">
+              <span>
+                <IconButton onClick={refreshPrices} disabled={loadingPrices} aria-label="Fiyatlari guncelle">
+                  {loadingPrices ? <CircularProgress size={20} /> : <RefreshIcon />}
+                </IconButton>
+              </span>
+            </Tooltip>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()}>
+              Yeni yatirim
+            </Button>
+          </>
+        }
+      />
 
       {investments.length > 0 && (
         <Grid container spacing={2} sx={{ mb: 3 }}>
           <Grid size={{ xs: 12, sm: 4 }}>
-            <Card>
-              <CardContent sx={{ py: 2 }}>
-                <Typography variant="body2" color="text.secondary">Toplam Maliyet</Typography>
-                <Typography variant="h6" fontWeight="bold">{fmt(totalCost)}</Typography>
-              </CardContent>
-            </Card>
+            <StatTile label="Toplam maliyet" value={fmt(totalCost)} />
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
-            <Card>
-              <CardContent sx={{ py: 2 }}>
-                <Typography variant="body2" color="text.secondary">Guncel Deger</Typography>
-                <Typography variant="h6" fontWeight="bold">
-                  {hasPrices ? fmt(totalCurrentValue) : '-'}
-                </Typography>
-              </CardContent>
-            </Card>
+            <StatTile label="Guncel deger" value={hasPrices ? fmt(totalCurrentValue) : '-'} />
           </Grid>
           <Grid size={{ xs: 12, sm: 4 }}>
-            <Card>
-              <CardContent sx={{ py: 2 }}>
-                <Typography variant="body2" color="text.secondary">Toplam Kar/Zarar</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                  {hasPrices ? (
-                    <>
-                      {totalPnl >= 0 ? (
-                        <TrendingUpIcon color="success" fontSize="small" />
-                      ) : (
-                        <TrendingDownIcon color="error" fontSize="small" />
-                      )}
-                      <Typography
-                        variant="h6"
-                        fontWeight="bold"
-                        color={totalPnl >= 0 ? 'success.main' : 'error.main'}
-                      >
-                        {totalPnl >= 0 ? '+' : ''}{fmt(totalPnl)} ({totalPnlPercent >= 0 ? '+' : ''}{totalPnlPercent.toFixed(2)}%)
-                      </Typography>
-                    </>
-                  ) : (
-                    <Typography variant="h6">-</Typography>
-                  )}
-                </Box>
-              </CardContent>
-            </Card>
+            <StatTile
+              icon={totalPnl >= 0 ? <TrendingUpIcon /> : <TrendingDownIcon />}
+              label="Toplam kar/zarar"
+              value={hasPrices ? `${totalPnl >= 0 ? '+' : ''}${fmt(totalPnl)}` : '-'}
+              hint={hasPrices ? `${totalPnlPercent >= 0 ? '+' : ''}${totalPnlPercent.toFixed(2)}%` : null}
+              tone={hasPrices ? (totalPnl >= 0 ? delta.up : delta.down) : undefined}
+            />
           </Grid>
         </Grid>
       )}

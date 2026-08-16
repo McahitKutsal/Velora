@@ -324,8 +324,6 @@ function StaticCard({ prompt, answer, notes, promptIsForeign, language, revealed
 
 /* ------------------------- main ------------------------- */
 
-const DECK_ACCENT = '#4da8da';
-
 export default function StudyPage() {
   return (
     <Suspense
@@ -450,6 +448,7 @@ function StudySession() {
     });
   }, [wantsCloze, clozeLoading, cloze, current]);
 
+  const accent = theme.palette.primary.main;
   const scrambleTiles = useMemo(() => scrambleLetters(current?.front), [current?.front]);
 
   // Cevabın yazılarak/dizilerek verildiği aktiviteler ortak cevap alanını kullanır.
@@ -772,26 +771,33 @@ function StudySession() {
 
   return (
     <Box sx={{ maxWidth: 680, mx: 'auto' }}>
-      {/* Top bar */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-        <IconButton onClick={() => router.push(`/flashcards`)} size="small">
-          <CloseIcon />
+      {/* Üst şerit: çıkış, ilerleme, sayaç */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+        <IconButton onClick={() => router.push(`/flashcards`)} size="small" aria-label="Oturumu kapat">
+          <CloseIcon fontSize="small" />
         </IconButton>
         <Box sx={{ flex: 1 }}>
-          <LinearProgress
-            variant="determinate"
-            value={progress}
-            sx={{ height: 8, borderRadius: 4, bgcolor: 'action.hover' }}
-          />
+          <LinearProgress variant="determinate" value={progress} sx={{ height: 6 }} />
         </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ minWidth: 54, textAlign: 'right' }} className="num">
-          {done} / {totalRef.current}
+        <Typography variant="caption" color="text.secondary" sx={{ minWidth: 48, textAlign: 'right', fontWeight: 600 }} className="num">
+          {done}/{totalRef.current}
         </Typography>
       </Box>
 
-      {/* Mode selector */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, mb: 3, flexWrap: 'wrap' }}>
-        <ToggleButtonGroup value={mode} exclusive onChange={changeMode} size="small">
+      {/* Aktivite seçici — dar ekranda yatay kayar, satır bölünmez */}
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 1,
+          mb: 3,
+          overflowX: 'auto',
+          pb: 0.5,
+          '&::-webkit-scrollbar': { display: 'none' },
+          scrollbarWidth: 'none',
+        }}
+      >
+        <ToggleButtonGroup value={mode} exclusive onChange={changeMode} size="small" sx={{ flexShrink: 0 }}>
           <Tooltip title="Karışık: her kartta seviyesine uygun aktivite">
             <ToggleButton value="mixed">
               <AutoAwesomeRoundedIcon fontSize="small" sx={{ mr: 0.5 }} /> {!isSmall && 'Karışık'}
@@ -825,6 +831,8 @@ function StudySession() {
           </ToggleButton>
         </ToggleButtonGroup>
 
+        <Box sx={{ flex: 1, minWidth: 8 }} />
+
         <Tooltip title={reversed ? `Yön: Türkçe → ${language.label}` : `Yön: ${language.label} → Türkçe`}>
           <Chip
             icon={<SwapHorizIcon fontSize="small" />}
@@ -833,6 +841,7 @@ function StudySession() {
             onClick={toggleReversed}
             color={reversed ? 'primary' : 'default'}
             variant={reversed ? 'filled' : 'outlined'}
+            sx={{ flexShrink: 0 }}
           />
         </Tooltip>
         <Tooltip title={autoPlay ? 'Otomatik seslendirme açık' : 'Otomatik seslendirme kapalı'}>
@@ -907,7 +916,7 @@ function StudySession() {
             language={language}
             notes={current.notes}
             flipped={flipped}
-            color={DECK_ACCENT}
+            color={accent}
             onClick={() => setFlipped((f) => !f)}
             imageUrl={current.image_url}
             showImage={showImage}
@@ -920,8 +929,9 @@ function StudySession() {
               </Button>
             ) : (
               <Box sx={{ display: 'flex', gap: 1 }}>
-                {RATINGS.map((r, i) => {
+                {RATINGS.map((r) => {
                   const meta = RATING_META[r];
+                  const tone = theme.palette.data.rating[r];
                   return (
                     <Button
                       key={r}
@@ -932,8 +942,8 @@ function StudySession() {
                         flexDirection: 'column',
                         py: 1,
                         color: '#fff',
-                        bgcolor: meta.color,
-                        '&:hover': { bgcolor: meta.color, filter: 'brightness(0.92)' },
+                        bgcolor: tone,
+                        '&:hover': { bgcolor: tone, filter: 'brightness(0.94)' },
                       }}
                     >
                       <Typography variant="button" sx={{ lineHeight: 1.2 }}>
@@ -960,7 +970,7 @@ function StudySession() {
             language={language}
             notes={current.notes}
             revealed={answered}
-            color={DECK_ACCENT}
+            color={accent}
             verdict={verdict}
             imageUrl={current.image_url}
             showImage={showImage}
@@ -975,10 +985,10 @@ function StudySession() {
               if (answered) {
                 if (isCorrect) {
                   borderColor = theme.palette.success.main;
-                  bg = `${theme.palette.success.main}18`;
+                  bg = alpha(theme.palette.success.main, 0.12);
                 } else if (isSelected) {
                   borderColor = theme.palette.error.main;
-                  bg = `${theme.palette.error.main}18`;
+                  bg = alpha(theme.palette.error.main, 0.12);
                 }
               }
               return (
@@ -1041,7 +1051,7 @@ function StudySession() {
               language={language}
               notes={current.notes}
               revealed={answered}
-              color={DECK_ACCENT}
+              color={accent}
               verdict={verdict}
               imageUrl={current.image_url}
               showImage={showImage}
@@ -1058,7 +1068,7 @@ function StudySession() {
               language={language}
               answered={answered}
               verdict={verdict}
-              color={DECK_ACCENT}
+              color={accent}
             />
           )}
 
@@ -1072,12 +1082,12 @@ function StudySession() {
               language={language}
               answered={answered}
               verdict={verdict}
-              color={DECK_ACCENT}
+              color={accent}
             />
           )}
 
           {activity === 'listen' && (
-            <Card sx={{ borderTop: `4px solid ${DECK_ACCENT}`, p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
+            <Card sx={{ borderTop: `3px solid ${accent}`, p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
               {!answered ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 1 }}>
                   <Typography variant="overline" color="text.secondary">
@@ -1168,8 +1178,8 @@ function StudySession() {
                         ? {
                             bgcolor:
                               verdict === 'correct'
-                                ? `${theme.palette.success.main}14`
-                                : `${theme.palette.error.main}14`,
+                                ? alpha(theme.palette.success.main, 0.10)
+                                : alpha(theme.palette.error.main, 0.10),
                           }
                         : undefined,
                     },

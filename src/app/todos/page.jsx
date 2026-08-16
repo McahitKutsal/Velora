@@ -26,9 +26,12 @@ import {
   CircularProgress,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/DeleteOutlineRounded';
+import EditIcon from '@mui/icons-material/EditOutlined';
+import ChecklistIcon from '@mui/icons-material/ChecklistRounded';
 import useTodoStore from '@/stores/todoStore';
+import PageHeader from '@/components/ui/PageHeader';
+import EmptyState from '@/components/ui/EmptyState';
 
 const PRIORITIES = [
   { value: 'low', label: 'Düşük', color: 'default' },
@@ -114,44 +117,42 @@ export default function TodosPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 1 }}>
-        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-          Yapılacaklar
-        </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()} size="small">
-          Yeni Görev
-        </Button>
-      </Box>
+      <PageHeader
+        title="Yapılacaklar"
+        subtitle={`${todos.filter((t) => !t.completed).length} aktif · ${todos.filter((t) => t.completed).length} tamamlandı`}
+        actions={
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()}>
+            Yeni görev
+          </Button>
+        }
+      />
 
       <Box sx={{ mb: 2 }}>
-        <ToggleButtonGroup
-          value={filter}
-          exclusive
-          onChange={(_, v) => v && setFilter(v)}
-          size="small"
-        >
-          <ToggleButton value="all">Tümü ({todos.length})</ToggleButton>
-          <ToggleButton value="active">Aktif ({todos.filter((t) => !t.completed).length})</ToggleButton>
-          <ToggleButton value="completed">Tamamlanan ({todos.filter((t) => t.completed).length})</ToggleButton>
+        <ToggleButtonGroup value={filter} exclusive onChange={(_, v) => v && setFilter(v)} size="small">
+          <ToggleButton value="all">Tümü</ToggleButton>
+          <ToggleButton value="active">Aktif</ToggleButton>
+          <ToggleButton value="completed">Tamamlanan</ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
-      <Card>
-        <List disablePadding>
-          {filteredTodos.length === 0 ? (
-            <ListItem>
-              <ListItemText
-                primary={
-                  <Typography color="text.secondary" align="center" sx={{ py: 3 }}>
-                    {filter === 'completed'
-                      ? 'Tamamlanan görev yok'
-                      : 'Görev bulunamadı. "Yeni Görev" butonuna tıklayın.'}
-                  </Typography>
-                }
-              />
-            </ListItem>
-          ) : (
-            filteredTodos.map((todo, index) => (
+      {filteredTodos.length === 0 ? (
+        <EmptyState
+          compact
+          icon={<ChecklistIcon />}
+          title={filter === 'completed' ? 'Tamamlanan görev yok' : 'Görev yok'}
+          description={filter === 'completed' ? 'Tamamladığın görevler burada birikir.' : 'Yeni bir görev ekleyerek başla.'}
+          action={
+            filter !== 'completed' ? (
+              <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpen()}>
+                Yeni görev
+              </Button>
+            ) : null
+          }
+        />
+      ) : (
+        <Card>
+          <List disablePadding>
+            {filteredTodos.map((todo, index) => (
               <ListItem
                 key={todo.id}
                 divider={index < filteredTodos.length - 1}
@@ -187,9 +188,16 @@ export default function TodosPage() {
                       <Chip
                         label={PRIORITIES.find((p) => p.value === todo.priority)?.label || todo.priority}
                         size="small"
-                        color={PRIORITIES.find((p) => p.value === todo.priority)?.color || 'default'}
+                        variant="outlined"
+                        sx={{
+                          height: 20,
+                          color: todo.priority === 'high' ? 'error.main' : 'text.secondary',
+                          borderColor: todo.priority === 'high' ? 'error.main' : 'divider',
+                        }}
                       />
-                      {todo.category && <Chip label={todo.category} size="small" variant="outlined" />}
+                      {todo.category && (
+                        <Chip label={todo.category} size="small" variant="outlined" sx={{ height: 20 }} />
+                      )}
                     </Box>
                   }
                   secondary={
@@ -208,13 +216,13 @@ export default function TodosPage() {
                   }
                 />
               </ListItem>
-            ))
-          )}
-        </List>
-      </Card>
+            ))}
+          </List>
+        </Card>
+      )}
 
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth fullScreen={isSmall}>
-        <DialogTitle>{editId ? 'Görevi Düzenle' : 'Yeni Görev Ekle'}</DialogTitle>
+        <DialogTitle>{editId ? 'Görevi düzenle' : 'Yeni görev'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
           <TextField
             label="Başlık"

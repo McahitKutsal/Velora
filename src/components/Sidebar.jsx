@@ -14,15 +14,16 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import ShowChartIcon from '@mui/icons-material/ShowChart';
-import ChecklistIcon from '@mui/icons-material/Checklist';
-import StyleIcon from '@mui/icons-material/Style';
-import SettingsIcon from '@mui/icons-material/Settings';
+import DashboardIcon from '@mui/icons-material/GridViewRounded';
+import ShowChartIcon from '@mui/icons-material/ShowChartRounded';
+import ChecklistIcon from '@mui/icons-material/ChecklistRounded';
+import StyleIcon from '@mui/icons-material/StyleRounded';
+import SettingsIcon from '@mui/icons-material/SettingsRounded';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import Brand from './Brand';
 
-export const DRAWER_WIDTH = 240;
+export const DRAWER_WIDTH = 248;
 
 const menuItems = [
   { text: 'Dashboard', icon: <DashboardIcon />, path: '/' },
@@ -46,32 +47,10 @@ export default function Sidebar({ mobileOpen, onClose }) {
 
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Toolbar sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-          <Box
-            sx={{
-              width: 32,
-              height: 32,
-              borderRadius: 2,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: 'linear-gradient(135deg, #4da8da 0%, #2e7eaa 100%)',
-              boxShadow: '0 2px 8px rgba(77, 168, 218, 0.35)',
-            }}
-          >
-            <ShowChartIcon sx={{ color: '#fff', fontSize: 20 }} />
-          </Box>
-          <Typography
-            variant="h6"
-            noWrap
-            sx={{ fontWeight: 700, letterSpacing: '-0.02em' }}
-          >
-            Velora
-          </Typography>
-        </Box>
+      <Toolbar sx={{ px: 2.5 }}>
+        <Brand />
       </Toolbar>
-      <List sx={{ flexGrow: 1, px: 1, py: 0.5 }}>
+      <List sx={{ flexGrow: 1, px: 1.25, py: 0.5 }}>
         {menuItems.map((item) => {
           const selected =
             pathname === item.path ||
@@ -81,30 +60,15 @@ export default function Sidebar({ mobileOpen, onClose }) {
               key={item.text}
               selected={selected}
               onClick={() => handleNavigate(item.path)}
-              sx={{
-                my: 0.25,
-                position: 'relative',
-                pl: 2,
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  left: 0,
-                  top: '22%',
-                  height: '56%',
-                  width: 3,
-                  borderRadius: '0 4px 4px 0',
-                  backgroundColor: 'primary.main',
-                  opacity: selected ? 1 : 0,
-                  transition: 'opacity 0.2s ease',
-                },
-              }}
+              sx={{ my: 0.25, py: 0.9, px: 1.5 }}
             >
-              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemIcon sx={{ '& svg': { fontSize: 20 } }}>{item.icon}</ListItemIcon>
               <ListItemText
                 primary={item.text}
                 primaryTypographyProps={{
-                  fontWeight: selected ? 600 : 500,
+                  fontWeight: selected ? 650 : 500,
                   fontSize: '0.9rem',
+                  letterSpacing: '-0.01em',
                 }}
               />
             </ListItemButton>
@@ -114,9 +78,9 @@ export default function Sidebar({ mobileOpen, onClose }) {
       {user && (
         <>
           <Divider />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 2, mx: 0.5 }}>
             <Box sx={{ position: 'relative' }}>
-              <Avatar src={user.picture} alt={user.name} sx={{ width: 36, height: 36 }} />
+              <Avatar src={user.picture} alt={user.name} sx={{ width: 34, height: 34 }} />
               <Box
                 sx={{
                   position: 'absolute',
