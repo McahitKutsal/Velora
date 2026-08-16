@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { Box, Popover, Typography, CircularProgress } from '@mui/material';
 import SpeakButton from '@/components/SpeakButton';
 import { transliterate } from '@/lib/translit';
+import { getLanguage } from '@/lib/languages';
 
 // Aynı kelime tekrar tıklanınca dış servise gitmemek için istemci önbelleği.
 const cache = new Map();
@@ -38,11 +39,14 @@ function tokenize(text) {
 }
 
 // Kelimeye tıklanınca çevirisini küçük bir baloncukta gösteren metin bileşeni.
-export default function ClickableWords({ text, from = 'ru', to = 'tr', lang = 'ru-RU' }) {
+// `lang` kartın/destenin hedef dilidir (ör. 'ru', 'de'); çeviri hep Türkçeye.
+export default function ClickableWords({ text, lang, to = 'tr' }) {
   const [anchor, setAnchor] = useState(null);
   const [word, setWord] = useState('');
   const [translation, setTranslation] = useState(null);
   const [loading, setLoading] = useState(false);
+  const language = getLanguage(lang);
+  const from = language.code;
 
   const tokens = useMemo(() => tokenize(text || ''), [text]);
 
@@ -94,7 +98,7 @@ export default function ClickableWords({ text, from = 'ru', to = 'tr', lang = 'r
             <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
               {word}
             </Typography>
-            <SpeakButton text={word} lang={lang} />
+            <SpeakButton text={word} lang={language.speech} />
           </Box>
           {transliterate(word) && (
             <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>

@@ -4,7 +4,7 @@ import './globals.css';
 
 export const metadata = {
   title: 'Velora',
-  description: 'Rusça kelime kartları, yatırım ve görev takibi',
+  description: 'Rusça/Almanca kelime kartları, yatırım ve görev takibi',
   applicationName: 'Velora',
   appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Velora' },
   icons: { icon: '/icon.svg', apple: '/icon.svg' },

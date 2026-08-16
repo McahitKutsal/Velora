@@ -71,6 +71,7 @@ const SCHEMA_STATEMENTS = [
     name         TEXT    NOT NULL,
     description  TEXT,
     color        TEXT,
+    lang         TEXT    NOT NULL DEFAULT 'ru',
     created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
   )`,
   `CREATE INDEX IF NOT EXISTS idx_decks_user ON decks(user_id)`,
@@ -107,6 +108,8 @@ const SCHEMA_STATEMENTS = [
 // "duplicate column" hatasını yutup devam ederiz (idempotent migration).
 const MIGRATION_STATEMENTS = [
   `ALTER TABLE flashcards ADD COLUMN image_url TEXT`,
+  // Deste dili: mevcut desteler Rusça sayılır.
+  `ALTER TABLE decks ADD COLUMN lang TEXT NOT NULL DEFAULT 'ru'`,
 ];
 
 async function init(client) {

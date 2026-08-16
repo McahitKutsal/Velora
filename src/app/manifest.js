@@ -4,7 +4,7 @@ export default function manifest() {
   return {
     name: 'Velora',
     short_name: 'Velora',
-    description: 'Rusça kelime kartları, yatırım ve görev takibi',
+    description: 'Rusça/Almanca kelime kartları, yatırım ve görev takibi',
     start_url: '/',
     display: 'standalone',
     orientation: 'portrait',

@@ -5,7 +5,7 @@ import { IconButton, Tooltip } from '@mui/material';
 import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
 import { speak, isSpeechSupported } from '@/lib/speech';
 
-// Metni Rusça (ru-RU) seslendiren küçük hoparlör butonu.
+// Metni verilen dilde (ör. 'ru-RU', 'de-DE') seslendiren küçük hoparlör butonu.
 // Kart içinde tıklamaların üst öğeye yayılmaması için stopPropagation yapar.
 export default function SpeakButton({ text, lang = 'ru-RU', size = 'small', sx }) {
   const [supported] = useState(() => isSpeechSupported());

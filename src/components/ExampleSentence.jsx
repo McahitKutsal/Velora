@@ -5,32 +5,14 @@ import { Box, Typography, CircularProgress } from '@mui/material';
 import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded';
 import ClickableWords from '@/components/ClickableWords';
 import SpeakButton from '@/components/SpeakButton';
+import { getLanguage } from '@/lib/languages';
+import { fetchExample } from '@/lib/examples';
 
-// Aynı kelime için tekrar ağ isteği atmamak üzere basit önbellek.
-const cache = new Map();
-
-async function fetchExample(word) {
-  const key = word.toLowerCase();
-  if (cache.has(key)) return cache.get(key);
-  try {
-    const res = await fetch('/api/examples', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: word }),
-    });
-    const data = await res.json();
-    const val = res.ok ? data.example : null;
-    cache.set(key, val);
-    return val;
-  } catch {
-    return null;
-  }
-}
-
-// Bir Rusça kelime için örnek cümle gösterir (kelimeler tıklanabilir + seslendirme).
-export default function ExampleSentence({ word }) {
+// Bir yabancı kelime için örnek cümle gösterir (kelimeler tıklanabilir + seslendirme).
+export default function ExampleSentence({ word, lang }) {
   const [loading, setLoading] = useState(true);
   const [example, setExample] = useState(null);
+  const language = getLanguage(lang);
 
   useEffect(() => {
     let alive = true;
@@ -40,7 +22,7 @@ export default function ExampleSentence({ word }) {
       setLoading(false);
       return undefined;
     }
-    fetchExample(word.trim()).then((ex) => {
+    fetchExample(word.trim(), language.code).then((ex) => {
       if (!alive) return;
       setExample(ex);
       setLoading(false);
@@ -48,7 +30,7 @@ export default function ExampleSentence({ word }) {
     return () => {
       alive = false;
     };
-  }, [word]);
+  }, [word, language.code]);
 
   if (loading) {
     return (
@@ -78,9 +60,9 @@ export default function ExampleSentence({ word }) {
       <Box sx={{ minWidth: 0 }}>
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 0.5 }}>
           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-            <ClickableWords text={example.ru} />
+            <ClickableWords text={example.text} lang={language.code} />
           </Typography>
-          <SpeakButton text={example.ru} sx={{ p: 0.25 }} />
+          <SpeakButton text={example.text} lang={language.speech} sx={{ p: 0.25 }} />
         </Box>
         {example.tr && (
           <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>

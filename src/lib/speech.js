@@ -1,5 +1,6 @@
 // Web Speech API tabanlı seslendirme yardımcısı.
-// Tarayıcı built-in; ek maliyet/backend yok. Rusça için 'ru-RU' sesi seçilir.
+// Tarayıcı built-in; ek maliyet/backend yok. Ses, verilen dil koduna göre
+// seçilir (Rusça 'ru-RU', Almanca 'de-DE' …).
 
 // Tarayıcı sesleri async yüklenir; bir kez hazırlayıp önbelleğe alıyoruz.
 let voicesReady = false;

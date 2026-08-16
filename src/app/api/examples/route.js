@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getLanguage } from '@/lib/languages';
 
-// Bir Rusça kelime için örnek cümle — Tatoeba (ücretsiz, API key yok).
+// Bir yabancı kelime için örnek cümle — Tatoeba (ücretsiz, API key yok).
 // Cümleyi ve varsa Türkçe çevirisini döndürür. Türkçe çeviri Tatoeba'da
 // "dolaylı" olarak translations[1] içinde de gelebilir.
 
@@ -18,14 +19,15 @@ function pickTranslation(result) {
 
 export async function POST(req) {
   try {
-    const { q } = await req.json();
+    const { q, lang } = await req.json();
     const text = (q || '').trim();
     if (!text) return NextResponse.json({ error: 'q required' }, { status: 400 });
 
-    const key = text.toLowerCase();
+    const language = getLanguage(lang);
+    const key = `${language.code}|${text.toLowerCase()}`;
     if (cache.has(key)) return NextResponse.json(cache.get(key));
 
-    const url = `https://tatoeba.org/en/api_v0/search?from=rus&to=tur&query=${encodeURIComponent(
+    const url = `https://tatoeba.org/en/api_v0/search?from=${language.tatoeba}&to=tur&query=${encodeURIComponent(
       text
     )}&trans_filter=limit&sort=relevance`;
     const res = await fetch(url, { headers: { 'User-Agent': 'Velora/1.0 (flashcards)' } });
@@ -35,10 +37,10 @@ export async function POST(req) {
     const results = Array.isArray(data?.results) ? data.results : [];
     // Türkçe çevirisi olan ilk (en kısa, öğrenmesi kolay) cümleyi seç.
     const withTr = results
-      .map((r) => ({ ru: r.text, tr: pickTranslation(r) }))
-      .filter((r) => r.ru && r.tr)
-      .sort((a, b) => a.ru.length - b.ru.length);
-    const best = withTr[0] || (results[0]?.text ? { ru: results[0].text, tr: null } : null);
+      .map((r) => ({ text: r.text, tr: pickTranslation(r) }))
+      .filter((r) => r.text && r.tr)
+      .sort((a, b) => a.text.length - b.text.length);
+    const best = withTr[0] || (results[0]?.text ? { text: results[0].text, tr: null } : null);
 
     const payload = { example: best };
     cache.set(key, payload);

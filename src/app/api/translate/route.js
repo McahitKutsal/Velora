@@ -6,6 +6,9 @@ import { NextResponse } from 'next/server';
 
 const cache = new Map();
 
+// Dil kodları doğrudan URL'e giriyor; iki harfli koda zorla.
+const langCode = (code, fallback) => (/^[a-z]{2}$/.test(code || '') ? code : fallback);
+
 // Google'ın anahtarsız çeviri ucu. Yanıt: [[[çeviri, kaynak, ...], ...], ...]
 async function viaGoogle(text, from, to) {
   const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${from}&tl=${to}&dt=t&q=${encodeURIComponent(
@@ -38,9 +41,11 @@ async function viaMyMemory(text, from, to) {
 
 export async function POST(req) {
   try {
-    const { q, from = 'ru', to = 'tr' } = await req.json();
-    const text = (q || '').trim();
+    const body = await req.json();
+    const text = (body.q || '').trim();
     if (!text) return NextResponse.json({ error: 'q required' }, { status: 400 });
+    const from = langCode(body.from, 'ru');
+    const to = langCode(body.to, 'tr');
 
     const key = `${from}|${to}|${text.toLowerCase()}`;
     if (cache.has(key)) return NextResponse.json({ translation: cache.get(key), cached: true });

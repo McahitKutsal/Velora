@@ -39,10 +39,11 @@ import BoltIcon from '@mui/icons-material/Bolt';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import { ResponsiveContainer, BarChart, Bar, Tooltip as RTooltip, XAxis, Cell } from 'recharts';
 import useFlashcardStore from '@/stores/flashcardStore';
-import CyrillicKeyboard from '@/components/CyrillicKeyboard';
+import LangKeyboard from '@/components/LangKeyboard';
 import { DECK_COLORS } from '@/lib/flashcardConstants';
+import { DEFAULT_LANG, LANGUAGE_LIST, getLanguage } from '@/lib/languages';
 
-const emptyForm = { name: '', description: '', color: DECK_COLORS[0] };
+const emptyForm = { name: '', description: '', color: DECK_COLORS[0], lang: DEFAULT_LANG };
 
 function StatTile({ icon, label, value, color }) {
   return (
@@ -261,6 +262,7 @@ function DeckCard({ deck, onStudy, onEdit, onDelete, busy }) {
   const [anchor, setAnchor] = useState(null);
   const router = useRouter();
   const color = deck.color || DECK_COLORS[0];
+  const language = getLanguage(deck.lang);
   const reviewDue = Math.max(0, deck.due - deck.new_count);
   const progress = deck.total > 0 ? ((deck.total - deck.due) / deck.total) * 100 : 0;
 
@@ -307,6 +309,7 @@ function DeckCard({ deck, onStudy, onEdit, onDelete, busy }) {
         </Typography>
 
         <Box sx={{ display: 'flex', gap: 0.75, mt: 1.5, flexWrap: 'wrap' }}>
+          <Chip size="small" label={`${language.flag} ${language.label}`} variant="outlined" />
           <Chip size="small" label={`${deck.total} kart`} variant="outlined" />
           {reviewDue > 0 && (
             <Chip size="small" label={`${reviewDue} tekrar`} sx={{ bgcolor: '#4da8da22', color: '#2e7eaa', fontWeight: 600 }} />
@@ -416,7 +419,8 @@ export default function FlashcardsPage() {
     setGoalOpen(false);
   };
 
-  // Russian keyboard preference is shared with the study screen.
+  // On-screen keyboard preference is shared with the study screen.
+  // (Anahtar adı eski; kullanıcı tercihi kaybolmasın diye korunuyor.)
   useEffect(() => {
     setShowKeyboard(localStorage.getItem('velora_cyrillic') === '1');
   }, []);
@@ -435,7 +439,12 @@ export default function FlashcardsPage() {
   const handleOpen = (deck = null) => {
     if (deck) {
       setEditId(deck.id);
-      setForm({ name: deck.name, description: deck.description || '', color: deck.color || DECK_COLORS[0] });
+      setForm({
+        name: deck.name,
+        description: deck.description || '',
+        color: deck.color || DECK_COLORS[0],
+        lang: getLanguage(deck.lang).code,
+      });
     } else {
       setEditId(null);
       setForm(emptyForm);
@@ -560,7 +569,7 @@ export default function FlashcardsPage() {
           <span>{editId ? 'Desteyi Düzenle' : 'Yeni Deste'}</span>
           <Chip
             icon={<KeyboardIcon fontSize="small" />}
-            label="Rusça klavye"
+            label={getLanguage(form.lang).keyboardLabel}
             size="small"
             onClick={toggleKeyboard}
             color={showKeyboard ? 'primary' : 'default'}
@@ -568,6 +577,20 @@ export default function FlashcardsPage() {
           />
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
+          <TextField
+            select
+            label="Deste dili"
+            value={form.lang}
+            onChange={(e) => setForm({ ...form, lang: e.target.value })}
+            fullWidth
+            helperText="Klavye, seslendirme, çeviri ve örnek cümleler bu dile göre çalışır."
+          >
+            {LANGUAGE_LIST.map((l) => (
+              <MenuItem key={l.code} value={l.code}>
+                {l.flag} {l.label}
+              </MenuItem>
+            ))}
+          </TextField>
           <TextField
             label="Deste adı"
             value={form.name}
@@ -610,7 +633,7 @@ export default function FlashcardsPage() {
               ))}
             </Box>
           </Box>
-          {showKeyboard && <CyrillicKeyboard onChar={kbInsert} onBackspace={kbBackspace} />}
+          {showKeyboard && <LangKeyboard lang={form.lang} onChar={kbInsert} onBackspace={kbBackspace} />}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>İptal</Button>

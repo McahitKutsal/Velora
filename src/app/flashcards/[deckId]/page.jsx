@@ -38,10 +38,11 @@ import ShuffleIcon from '@mui/icons-material/Shuffle';
 import StyleIcon from '@mui/icons-material/Style';
 import KeyboardIcon from '@mui/icons-material/Keyboard';
 import useFlashcardStore from '@/stores/flashcardStore';
-import CyrillicKeyboard from '@/components/CyrillicKeyboard';
+import LangKeyboard from '@/components/LangKeyboard';
 import SpeakButton from '@/components/SpeakButton';
 import CardImagePicker from '@/components/CardImagePicker';
 import { DECK_COLORS, STATUS_META } from '@/lib/flashcardConstants';
+import { getLanguage } from '@/lib/languages';
 
 const emptyCard = { front: '', back: '', notes: '', image_url: null };
 
@@ -104,7 +105,8 @@ export default function DeckDetailPage() {
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [activeField, setActiveField] = useState('front');
 
-  // Russian keyboard preference is shared with the study screen.
+  // On-screen keyboard preference is shared with the study screen.
+  // (Anahtar adı eski; kullanıcı tercihi kaybolmasın diye korunuyor.)
   useEffect(() => {
     setShowKeyboard(localStorage.getItem('velora_cyrillic') === '1');
   }, []);
@@ -128,6 +130,8 @@ export default function DeckDetailPage() {
   };
 
   const deck = useMemo(() => decks.find((d) => String(d.id) === String(deckId)), [decks, deckId]);
+  // Klavye, seslendirme ve görsel araması destenin diline göre çalışır.
+  const language = getLanguage(deck?.lang);
 
   useEffect(() => {
     if (decks.length === 0) fetchDecks();
@@ -218,9 +222,14 @@ export default function DeckDetailPage() {
             <StyleIcon />
           </Box>
           <Box sx={{ minWidth: 0 }}>
-            <Typography variant="h5" fontWeight="bold" noWrap>
-              {deck ? deck.name : 'Deste'}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+              <Typography variant="h5" fontWeight="bold" noWrap>
+                {deck ? deck.name : 'Deste'}
+              </Typography>
+              {deck && (
+                <Chip size="small" label={`${language.flag} ${language.label}`} variant="outlined" />
+              )}
+            </Box>
             {deck?.description && (
               <Typography variant="body2" color="text.secondary" noWrap>
                 {deck.description}
@@ -295,7 +304,7 @@ export default function DeckDetailPage() {
                             <Typography fontWeight={600} sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                               {card.front}
                             </Typography>
-                            <SpeakButton text={card.front} sx={{ p: 0.25 }} />
+                            <SpeakButton text={card.front} lang={language.speech} sx={{ p: 0.25 }} />
                           </Box>
                           <Typography
                             variant="body2"
@@ -361,7 +370,7 @@ export default function DeckDetailPage() {
           <span>{editId ? 'Kartı Düzenle' : 'Kart Ekle'}</span>
           <Chip
             icon={<KeyboardIcon fontSize="small" />}
-            label="Rusça klavye"
+            label={language.keyboardLabel}
             size="small"
             onClick={toggleKeyboard}
             color={showKeyboard ? 'primary' : 'default'}
@@ -397,7 +406,7 @@ export default function DeckDetailPage() {
                   input: {
                     endAdornment: form.front.trim() ? (
                       <InputAdornment position="end" sx={{ alignSelf: 'flex-start', mt: 1 }}>
-                        <SpeakButton text={form.front} />
+                        <SpeakButton text={form.front} lang={language.speech} />
                       </InputAdornment>
                     ) : null,
                   },
@@ -427,6 +436,7 @@ export default function DeckDetailPage() {
                 </Typography>
                 <CardImagePicker
                   word={form.front}
+                  from={language.code}
                   value={form.image_url}
                   onChange={(url) => setForm({ ...form, image_url: url })}
                 />
@@ -454,7 +464,7 @@ export default function DeckDetailPage() {
               </Typography>
             </>
           )}
-          {showKeyboard && <CyrillicKeyboard onChar={kbInsert} onBackspace={kbBackspace} />}
+          {showKeyboard && <LangKeyboard lang={language.code} onChar={kbInsert} onBackspace={kbBackspace} />}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>İptal</Button>

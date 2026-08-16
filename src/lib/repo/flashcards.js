@@ -1,8 +1,14 @@
 import { getDb } from '../db';
 import { schedule, cardStatus, addDays, todayIso } from '../srs';
+import { LANGUAGES, DEFAULT_LANG } from '../languages';
 
 // Bu kadar çok kez unutulan kart "inatçı" (leech) sayılır.
 export const LEECH_THRESHOLD = 4;
+
+// İstemciden gelen dil kodunu güvene alır (bilinmeyen kod varsayılana düşer).
+function normalizeLang(code) {
+  return LANGUAGES[code] ? code : DEFAULT_LANG;
+}
 
 /* ------------------------------------------------------------------ */
 /* Row mappers                                                         */
@@ -14,6 +20,7 @@ function mapDeckRow(row) {
     name: row.name,
     description: row.description,
     color: row.color,
+    lang: normalizeLang(row.lang),
     created_at: row.created_at,
     total: Number(row.total || 0),
     due: Number(row.due || 0),
@@ -29,6 +36,8 @@ function mapCardRow(row) {
     back: row.back,
     notes: row.notes,
     image_url: row.image_url || null,
+    // Kartın dili destesinden gelir (sorgular decks ile join eder).
+    lang: normalizeLang(row.lang),
     repetitions: Number(row.repetitions || 0),
     ease_factor: Number(row.ease_factor || 2.5),
     interval_days: Number(row.interval_days || 0),
@@ -83,12 +92,13 @@ export async function getDeck(userId, deckId) {
 export async function createDeck(userId, payload) {
   const db = await getDb();
   const info = await db.execute({
-    sql: 'INSERT INTO decks (user_id, name, description, color) VALUES (?, ?, ?, ?)',
+    sql: 'INSERT INTO decks (user_id, name, description, color, lang) VALUES (?, ?, ?, ?, ?)',
     args: [
       userId,
       payload.name,
       payload.description || null,
       payload.color || null,
+      normalizeLang(payload.lang),
     ],
   });
   return { id: String(info.lastInsertRowid) };
@@ -97,11 +107,12 @@ export async function createDeck(userId, payload) {
 export async function updateDeck(userId, id, payload) {
   const db = await getDb();
   const result = await db.execute({
-    sql: 'UPDATE decks SET name = ?, description = ?, color = ? WHERE id = ? AND user_id = ?',
+    sql: 'UPDATE decks SET name = ?, description = ?, color = ?, lang = ? WHERE id = ? AND user_id = ?',
     args: [
       payload.name,
       payload.description || null,
       payload.color || null,
+      normalizeLang(payload.lang),
       id,
       userId,
     ],
@@ -154,9 +165,11 @@ async function assertDeckOwned(db, userId, deckId) {
 export async function listCards(userId, deckId) {
   const db = await getDb();
   const result = await db.execute({
-    sql: `SELECT * FROM flashcards
-          WHERE deck_id = ? AND user_id = ?
-          ORDER BY datetime(created_at) DESC, id DESC`,
+    sql: `SELECT f.*, d.lang AS lang
+          FROM flashcards f
+          JOIN decks d ON d.id = f.deck_id
+          WHERE f.deck_id = ? AND f.user_id = ?
+          ORDER BY datetime(f.created_at) DESC, f.id DESC`,
     args: [deckId, userId],
   });
   return result.rows.map(mapCardRow);
@@ -254,35 +267,45 @@ const STUDY_LIMIT = 300;
  * When `cram` is true, every card in scope is returned regardless of its due
  * date (free practice that does not follow the schedule).
  * Returns { cards, pool } where pool holds candidate answers for the
- * multiple-choice mode.
+ * multiple-choice mode. Pool entries carry `lang` so the client can keep
+ * distractors in the same language as the card being asked.
  */
 export async function getStudyQueue(userId, deckId, { cram = false } = {}) {
   const db = await getDb();
   const all = deckId === 'all' || deckId == null;
   if (!all) await assertDeckOwned(db, userId, deckId);
 
-  const scope = all ? '' : 'AND deck_id = ?';
+  const scope = all ? '' : 'AND f.deck_id = ?';
   const baseArgs = all ? [userId] : [userId, deckId];
-  const dueFilter = cram ? '' : "AND due_date <= date('now')";
+  const dueFilter = cram ? '' : "AND f.due_date <= date('now')";
 
   const queue = await db.execute({
-    sql: `SELECT * FROM flashcards
-          WHERE user_id = ? ${scope} ${dueFilter}
-          ORDER BY (last_reviewed IS NULL) ASC, due_date ASC, id ASC
+    sql: `SELECT f.*, d.lang AS lang
+          FROM flashcards f
+          JOIN decks d ON d.id = f.deck_id
+          WHERE f.user_id = ? ${scope} ${dueFilter}
+          ORDER BY (f.last_reviewed IS NULL) ASC, f.due_date ASC, f.id ASC
           LIMIT ${STUDY_LIMIT}`,
     args: baseArgs,
   });
 
   const pool = await db.execute({
-    sql: `SELECT id, back FROM flashcards
-          WHERE user_id = ? ${scope}
+    sql: `SELECT f.id, f.front, f.back, d.lang AS lang
+          FROM flashcards f
+          JOIN decks d ON d.id = f.deck_id
+          WHERE f.user_id = ? ${scope}
           LIMIT 500`,
     args: baseArgs,
   });
 
   return {
     cards: queue.rows.map(mapCardRow),
-    pool: pool.rows.map((r) => ({ id: String(r.id), back: r.back })),
+    pool: pool.rows.map((r) => ({
+      id: String(r.id),
+      front: r.front,
+      back: r.back,
+      lang: normalizeLang(r.lang),
+    })),
   };
 }
 

@@ -38,9 +38,11 @@ async function searchOpenverse(query, page) {
 
 export async function POST(req) {
   try {
-    const { q, from = 'ru', page = 1, raw = false } = await req.json();
+    const { q, from: fromRaw = 'ru', page = 1, raw = false } = await req.json();
     const text = (q || '').trim();
     if (!text) return NextResponse.json({ error: 'q required' }, { status: 400 });
+    // Dil kodu doğrudan çeviri URL'ine giriyor; iki harfli koda zorla.
+    const from = /^[a-z]{2}$/.test(fromRaw) ? fromRaw : 'ru';
 
     const pageNum = Math.max(1, Number(page) || 1);
     // raw: kullanıcının elle yazdığı sorgu, olduğu gibi aranır (çeviri yok).
