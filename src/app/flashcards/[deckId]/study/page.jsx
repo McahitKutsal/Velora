@@ -17,6 +17,11 @@ import {
   Tooltip,
   Divider,
   Popover,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Switch,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -39,6 +44,9 @@ import FormatQuoteRoundedIcon from '@mui/icons-material/FormatQuoteRounded';
 import VolumeUpRoundedIcon from '@mui/icons-material/VolumeUpRounded';
 import VisibilityRoundedIcon from '@mui/icons-material/VisibilityRounded';
 import VisibilityOffRoundedIcon from '@mui/icons-material/VisibilityOffRounded';
+import SpeakerNotesRoundedIcon from '@mui/icons-material/SpeakerNotesRounded';
+import SpeakerNotesOffRoundedIcon from '@mui/icons-material/SpeakerNotesOffRounded';
+import TuneRoundedIcon from '@mui/icons-material/TuneRounded';
 import useFlashcardStore from '@/stores/flashcardStore';
 import LangKeyboard from '@/components/LangKeyboard';
 import SpeakButton from '@/components/SpeakButton';
@@ -138,31 +146,67 @@ function Readable({ show, children, sx }) {
   );
 }
 
-// Arka plan görselini açıp kapatan göz butonu (görsel yoksa görünmez).
-function ImageEyeButton({ imageUrl, show, onToggle }) {
-  if (!imageUrl) return null;
+// Kartın sağ üst köşesindeki tekil aç/kapat butonu.
+function CardToggle({ on, onToggle, title, icon }) {
   return (
-    <Tooltip title={show ? 'Görseli gizle' : 'Görseli göster'}>
+    <Tooltip title={title}>
       <IconButton
         size="small"
         onClick={(e) => {
-          e.stopPropagation();
+          e.stopPropagation(); // kartı çevirmesin
           onToggle();
         }}
-        aria-label="Arka plan görselini aç/kapat"
+        aria-label={title}
         sx={{
-          position: 'absolute',
-          top: 8,
-          right: 8,
-          zIndex: 2,
-          color: show ? 'primary.main' : 'text.secondary',
+          color: on ? 'primary.main' : 'text.secondary',
           bgcolor: 'background.paper',
           '&:hover': { bgcolor: 'action.hover' },
         }}
       >
-        {show ? <VisibilityOffRoundedIcon fontSize="small" /> : <VisibilityRoundedIcon fontSize="small" />}
+        {icon}
       </IconButton>
     </Tooltip>
+  );
+}
+
+/* Görsel / not aç-kapat butonları. Oturum başında seçilen varsayılanı yalnız
+   o kart için geçici olarak değiştirir; sonraki kartta varsayılana dönülür.
+   İlgili içerik kartta yoksa (imageUrl / notes boş) butonu da çizilmez. */
+function CardToggles({ imageUrl, showImage, onToggleImage, notes, showNotes, onToggleNotes }) {
+  const hasImage = Boolean(imageUrl);
+  const hasNotes = Boolean(notes);
+  if (!hasImage && !hasNotes) return null;
+  return (
+    <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 2, display: 'flex', gap: 0.5 }}>
+      {hasImage && (
+        <CardToggle
+          on={showImage}
+          onToggle={onToggleImage}
+          title={showImage ? 'Görseli gizle' : 'Görseli göster'}
+          icon={
+            showImage ? (
+              <VisibilityOffRoundedIcon fontSize="small" />
+            ) : (
+              <VisibilityRoundedIcon fontSize="small" />
+            )
+          }
+        />
+      )}
+      {hasNotes && (
+        <CardToggle
+          on={showNotes}
+          onToggle={onToggleNotes}
+          title={showNotes ? 'Notu gizle' : 'Notu göster'}
+          icon={
+            showNotes ? (
+              <SpeakerNotesOffRoundedIcon fontSize="small" />
+            ) : (
+              <SpeakerNotesRoundedIcon fontSize="small" />
+            )
+          }
+        />
+      )}
+    </Box>
   );
 }
 
@@ -182,7 +226,23 @@ function Term({ text, foreign, language, align = 'left' }) {
 
 /* ------------------------- flip card ------------------------- */
 
-function FlipCard({ prompt, answer, notes, promptIsForeign, language, flipped, color, onClick, imageUrl, showImage, onToggleImage }) {
+function FlipCard({
+  prompt,
+  answer,
+  notes,
+  promptIsForeign,
+  language,
+  flipped,
+  color,
+  onClick,
+  imageUrl,
+  showImage,
+  onToggleImage,
+  showNotes,
+  onToggleNotes,
+}) {
+  // Görseli olmayan kartta düzen değişmesin: bayrak yalnız görsel varsa geçerli.
+  const withImage = showImage && Boolean(imageUrl);
   return (
     <Box sx={{ perspective: '1600px', width: '100%', cursor: 'pointer' }} onClick={onClick}>
       <Box
@@ -219,7 +279,7 @@ function FlipCard({ prompt, answer, notes, promptIsForeign, language, flipped, c
           <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18, zIndex: 1 }}>
             Soru
           </Typography>
-          <ImageEyeButton imageUrl={imageUrl} show={showImage} onToggle={onToggleImage} />
+          <CardToggles imageUrl={imageUrl} showImage={showImage} onToggleImage={onToggleImage} />
           <Box
             sx={{
               position: 'absolute',
@@ -230,12 +290,12 @@ function FlipCard({ prompt, answer, notes, promptIsForeign, language, flipped, c
               display: 'flex',
               justifyContent: 'center',
               // Görsel açılınca yazı animasyonla kartın üstüne kayar.
-              top: showImage ? 44 : '50%',
-              transform: showImage ? 'translateY(0)' : 'translateY(-50%)',
+              top: withImage ? 44 : '50%',
+              transform: withImage ? 'translateY(0)' : 'translateY(-50%)',
               transition: 'top 0.45s cubic-bezier(0.4, 0.2, 0.2, 1), transform 0.45s cubic-bezier(0.4, 0.2, 0.2, 1)',
             }}
           >
-            <Readable show={showImage}>
+            <Readable show={withImage}>
               <Term text={prompt} foreign={promptIsForeign} language={language} align="center" />
             </Readable>
           </Box>
@@ -266,8 +326,9 @@ function FlipCard({ prompt, answer, notes, promptIsForeign, language, flipped, c
           <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18 }}>
             Cevap
           </Typography>
+          <CardToggles notes={notes} showNotes={showNotes} onToggleNotes={onToggleNotes} />
           <Term text={answer} foreign={!promptIsForeign} language={language} align="center" />
-          {notes && (
+          {notes && showNotes && (
             <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 2, whiteSpace: 'pre-wrap' }}>
               {notes}
             </Typography>
@@ -280,17 +341,40 @@ function FlipCard({ prompt, answer, notes, promptIsForeign, language, flipped, c
 
 /* ------------------------- static answer card ------------------------- */
 
-function StaticCard({ prompt, answer, notes, promptIsForeign, language, revealed, color, verdict, imageUrl, showImage, onToggleImage }) {
+function StaticCard({
+  prompt,
+  answer,
+  notes,
+  promptIsForeign,
+  language,
+  revealed,
+  color,
+  verdict,
+  imageUrl,
+  showImage,
+  onToggleImage,
+  showNotes,
+  onToggleNotes,
+}) {
+  const withImage = showImage && Boolean(imageUrl);
   return (
     <Card sx={{ position: 'relative', borderTop: `4px solid ${color}`, p: { xs: 3, sm: 4 } }}>
       <CardBackdrop imageUrl={imageUrl} show={showImage} />
-      <ImageEyeButton imageUrl={imageUrl} show={showImage} onToggle={onToggleImage} />
+      {/* Not butonu ancak cevap açıldıktan sonra anlamlı; öncesinde ipucu vermesin. */}
+      <CardToggles
+        imageUrl={imageUrl}
+        showImage={showImage}
+        onToggleImage={onToggleImage}
+        notes={revealed ? notes : null}
+        showNotes={showNotes}
+        onToggleNotes={onToggleNotes}
+      />
       <Box sx={{ position: 'relative', zIndex: 1 }}>
         <Typography variant="overline" color="text.secondary">
           Soru
         </Typography>
         <Box sx={{ mb: revealed ? 2 : 0 }}>
-          <Readable show={showImage}>
+          <Readable show={withImage}>
             <Term text={prompt} foreign={promptIsForeign} language={language} />
           </Readable>
         </Box>
@@ -307,10 +391,10 @@ function StaticCard({ prompt, answer, notes, promptIsForeign, language, revealed
                 Cevap
               </Typography>
             </Box>
-            <Readable show={showImage}>
+            <Readable show={withImage}>
               <Term text={answer} foreign={!promptIsForeign} language={language} />
             </Readable>
-            {notes && (
+            {notes && showNotes && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 1.5, whiteSpace: 'pre-wrap' }}>
                 {notes}
               </Typography>
@@ -319,6 +403,87 @@ function StaticCard({ prompt, answer, notes, promptIsForeign, language, revealed
         )}
       </Box>
     </Card>
+  );
+}
+
+/* ------------------------- session prefs ------------------------- */
+
+/* Oturum başlamadan açılan ayar penceresi: görsel ve notun bu çalışma boyunca
+   varsayılan olarak görünüp görünmeyeceğini belirler. Son seçim localStorage'da
+   saklanır, pencere onunla dolu açılır. */
+function StudyPrefsDialog({ open, defaults, onStart }) {
+  const [image, setImage] = useState(defaults.image);
+  const [notes, setNotes] = useState(defaults.notes);
+
+  // Pencere her açıldığında son kullanılan seçimle başlasın.
+  useEffect(() => {
+    if (!open) return;
+    setImage(defaults.image);
+    setNotes(defaults.notes);
+  }, [open, defaults.image, defaults.notes]);
+
+  const start = () => onStart({ image, notes });
+
+  const rows = [
+    {
+      key: 'image',
+      label: 'Görseller',
+      description: 'Görseli olan kartlarda arka plan açık başlasın.',
+      checked: image,
+      onChange: setImage,
+    },
+    {
+      key: 'notes',
+      label: 'Notlar',
+      description: 'Kartın notu, cevapla birlikte görünsün.',
+      checked: notes,
+      onChange: setNotes,
+    },
+  ];
+
+  return (
+    <Dialog open={open} onClose={start} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <TuneRoundedIcon fontSize="small" color="primary" />
+        Çalışma ayarları
+      </DialogTitle>
+      <DialogContent>
+        {rows.map((row, i) => (
+          <Box
+            key={row.key}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 2,
+              py: 1.5,
+              borderTop: i > 0 ? '1px solid' : 'none',
+              borderColor: 'divider',
+            }}
+          >
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="subtitle2">{row.label}</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {row.description}
+              </Typography>
+            </Box>
+            <Switch
+              checked={row.checked}
+              onChange={(e) => row.onChange(e.target.checked)}
+              inputProps={{ 'aria-label': row.label }}
+            />
+          </Box>
+        ))}
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1.5 }}>
+          Çalışma sırasında kartın sağ üstündeki butonlarla tek kart için değiştirebilirsin.
+        </Typography>
+      </DialogContent>
+      <DialogActions>
+        <Button variant="contained" onClick={start} autoFocus>
+          Başla
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
 
@@ -363,9 +528,16 @@ function StudySession() {
   const [showKeyboard, setShowKeyboard] = useState(false);
   const [reversed, setReversed] = useState(false); // false: hedef dil→tr, true: tr→hedef dil
   const [autoPlay, setAutoPlay] = useState(false); // hedef dildeki tarafı otomatik seslendir
-  const [showImage, setShowImage] = useState(false); // arka plan görselini göster
+  const [showImage, setShowImage] = useState(true); // bu kartta arka plan görseli
+  const [showNotes, setShowNotes] = useState(true); // bu kartta kartın notu
+  const [prefsOpen, setPrefsOpen] = useState(false); // oturum öncesi ayar penceresi
   const [helpAnchor, setHelpAnchor] = useState(null); // kısayol lejantı
   const [tally, setTally] = useState({ reviews: 0, correct: 0, answered: 0, again: 0 });
+
+  // Oturum varsayılanları: pop-up'ta seçilir, her yeni kartta buraya dönülür.
+  // State değil ref, çünkü resetCardState eski bir render'a takılı kalabiliyor.
+  const defaultsRef = useRef({ image: true, notes: true });
+  const [defaults, setDefaults] = useState(defaultsRef.current);
 
   // Remember preferences across sessions.
   useEffect(() => {
@@ -374,7 +546,28 @@ function StudySession() {
     setAutoPlay(localStorage.getItem('velora_autoplay') === '1');
     const savedMode = localStorage.getItem('velora_mode');
     if (MODES.includes(savedMode)) setMode(savedMode);
+    // Görsel/not varsayılanı: kayıt yoksa ikisi de açık.
+    const saved = {
+      image: localStorage.getItem('velora_show_image') !== '0',
+      notes: localStorage.getItem('velora_show_notes') !== '0',
+    };
+    defaultsRef.current = saved;
+    setDefaults(saved);
+    setShowImage(saved.image);
+    setShowNotes(saved.notes);
   }, []);
+
+  // Pop-up'taki seçimi uygular ve oturumu başlatır.
+  const startSession = ({ image, notes }) => {
+    const next = { image, notes };
+    defaultsRef.current = next;
+    setDefaults(next);
+    localStorage.setItem('velora_show_image', image ? '1' : '0');
+    localStorage.setItem('velora_show_notes', notes ? '1' : '0');
+    setShowImage(image);
+    setShowNotes(notes);
+    setPrefsOpen(false);
+  };
 
   const toggleKeyboard = () => {
     setShowKeyboard((v) => {
@@ -477,6 +670,8 @@ function StudySession() {
     startRef.current = Date.now();
     setFinished(cards.length === 0);
     setTally({ reviews: 0, correct: 0, answered: 0, again: 0 });
+    // Çalışılacak kart varsa önce ayar penceresi çıksın.
+    setPrefsOpen(cards.length > 0);
     setLoading(false);
   }, [deckId, cram, fetchStudyQueue]);
 
@@ -490,7 +685,9 @@ function StudySession() {
     setSelected(null);
     setTyped('');
     setVerdict(null);
-    setShowImage(false); // yeni kartta görsel yine gizli başlasın
+    // Yeni kartta görsel/not oturum varsayılanına döner.
+    setShowImage(defaultsRef.current.image);
+    setShowNotes(defaultsRef.current.notes);
   };
 
   // Move to the next card; if rating is "again" the card is requeued.
@@ -539,7 +736,7 @@ function StudySession() {
   // Otomatik seslendirme: hedef dildeki taraf ilk kez görününce bir kez oku.
   const autoSpokeRef = useRef(null);
   useEffect(() => {
-    if (!autoPlay || !current) return;
+    if (!autoPlay || !current || prefsOpen) return;
     // Ters yönde ve kelimeyi gizleyen aktivitelerde (harf dizme, boşluk
     // doldurma, dinleme) kelime cevabın kendisidir; erken okuyup ele verme.
     const hidden =
@@ -551,17 +748,17 @@ function StudySession() {
     autoSpokeRef.current = stamp;
     speak(current.front, language.speech);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPlay, reversed, activity, flipped, answered, current?.id]);
+  }, [autoPlay, reversed, activity, flipped, answered, prefsOpen, current?.id]);
 
   // Dinleme modu: her yeni kartta hedef dildeki kelimeyi otomatik oku.
   const listenSpokeRef = useRef(null);
   useEffect(() => {
-    if (activity !== 'listen' || !current) return;
+    if (activity !== 'listen' || !current || prefsOpen) return;
     if (listenSpokeRef.current === current.id) return;
     listenSpokeRef.current = current.id;
     speak(current.front, language.speech);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activity, current?.id]);
+  }, [activity, prefsOpen, current?.id]);
 
   // Answer handlers for choice/type: record correctness, then reveal.
   const answerChoice = (opt) => {
@@ -621,7 +818,7 @@ function StudySession() {
   useEffect(() => {
     const typing = activity === 'type' || activity === 'listen' || activity === 'cloze';
     const onKey = (e) => {
-      if (finished || loading || !current) return;
+      if (finished || loading || prefsOpen || !current) return;
       if (e.target && ['INPUT', 'TEXTAREA'].includes(e.target.tagName) && !typing) return;
 
       if (activity === 'flip') {
@@ -664,7 +861,7 @@ function StudySession() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activity, flipped, answered, current, options, finished, loading, verdict, typed, scrambleTiles]);
+  }, [activity, flipped, answered, current, options, finished, loading, prefsOpen, verdict, typed, scrambleTiles]);
 
   const changeMode = (_, v) => {
     if (!v) return;
@@ -677,6 +874,12 @@ function StudySession() {
   const progress = totalRef.current > 0 ? (done / totalRef.current) * 100 : 0;
 
   /* ------------------------- render ------------------------- */
+
+  // Ayarlar seçilmeden kart çizilmesin: ilk kartın görseli/notu arkadan sızmasın
+  // ve örnek cümle gibi istekler boşa gitmesin.
+  if (prefsOpen) {
+    return <StudyPrefsDialog open defaults={defaults} onStart={startSession} />;
+  }
 
   if (loading) {
     return (
@@ -921,6 +1124,8 @@ function StudySession() {
             imageUrl={current.image_url}
             showImage={showImage}
             onToggleImage={() => setShowImage((v) => !v)}
+            showNotes={showNotes}
+            onToggleNotes={() => setShowNotes((v) => !v)}
           />
           <Box sx={{ mt: 3 }}>
             {!flipped ? (
@@ -975,6 +1180,8 @@ function StudySession() {
             imageUrl={current.image_url}
             showImage={showImage}
             onToggleImage={() => setShowImage((v) => !v)}
+            showNotes={showNotes}
+            onToggleNotes={() => setShowNotes((v) => !v)}
           />
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1.25, mt: 3 }}>
             {options.map((opt, i) => {
@@ -1056,6 +1263,8 @@ function StudySession() {
               imageUrl={current.image_url}
               showImage={showImage}
               onToggleImage={() => setShowImage((v) => !v)}
+              showNotes={showNotes}
+              onToggleNotes={() => setShowNotes((v) => !v)}
             />
           )}
 
@@ -1087,7 +1296,7 @@ function StudySession() {
           )}
 
           {activity === 'listen' && (
-            <Card sx={{ borderTop: `3px solid ${accent}`, p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
+            <Card sx={{ position: 'relative', borderTop: `3px solid ${accent}`, p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
               {!answered ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 1 }}>
                   <Typography variant="overline" color="text.secondary">
@@ -1119,10 +1328,15 @@ function StudySession() {
                   <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <Term text={current.front} foreign language={language} align="center" />
                   </Box>
+                  <CardToggles
+                    notes={current.notes}
+                    showNotes={showNotes}
+                    onToggleNotes={() => setShowNotes((v) => !v)}
+                  />
                   <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
                     {current.back}
                   </Typography>
-                  {current.notes && (
+                  {current.notes && showNotes && (
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1, whiteSpace: 'pre-wrap' }}>
                       {current.notes}
                     </Typography>
