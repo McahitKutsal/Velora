@@ -279,7 +279,14 @@ function FlipCard({
           <Typography variant="overline" color="text.secondary" sx={{ position: 'absolute', top: 14, left: 18, zIndex: 1 }}>
             Soru
           </Typography>
-          <CardToggles imageUrl={imageUrl} showImage={showImage} onToggleImage={onToggleImage} />
+          <CardToggles
+            imageUrl={imageUrl}
+            showImage={showImage}
+            onToggleImage={onToggleImage}
+            notes={notes}
+            showNotes={showNotes}
+            onToggleNotes={onToggleNotes}
+          />
           <Box
             sx={{
               position: 'absolute',
@@ -288,7 +295,9 @@ function FlipCard({
               px: 2,
               zIndex: 1,
               display: 'flex',
-              justifyContent: 'center',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 1,
               // Görsel açılınca yazı animasyonla kartın üstüne kayar.
               top: withImage ? 44 : '50%',
               transform: withImage ? 'translateY(0)' : 'translateY(-50%)',
@@ -298,6 +307,13 @@ function FlipCard({
             <Readable show={withImage}>
               <Term text={prompt} foreign={promptIsForeign} language={language} align="center" />
             </Readable>
+            {notes && showNotes && (
+              <Readable show={withImage}>
+                <Typography variant="body2" color="text.secondary" align="center" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {notes}
+                </Typography>
+              </Readable>
+            )}
           </Box>
           <Typography variant="caption" color="text.disabled" sx={{ position: 'absolute', bottom: 12, zIndex: 1 }}>
             Cevabı görmek için tıkla ya da Boşluk'a bas
@@ -360,12 +376,11 @@ function StaticCard({
   return (
     <Card sx={{ position: 'relative', borderTop: `4px solid ${color}`, p: { xs: 3, sm: 4 } }}>
       <CardBackdrop imageUrl={imageUrl} show={showImage} />
-      {/* Not butonu ancak cevap açıldıktan sonra anlamlı; öncesinde ipucu vermesin. */}
       <CardToggles
         imageUrl={imageUrl}
         showImage={showImage}
         onToggleImage={onToggleImage}
-        notes={revealed ? notes : null}
+        notes={notes}
         showNotes={showNotes}
         onToggleNotes={onToggleNotes}
       />
@@ -377,6 +392,15 @@ function StaticCard({
           <Readable show={withImage}>
             <Term text={prompt} foreign={promptIsForeign} language={language} />
           </Readable>
+          {!revealed && notes && showNotes && (
+            <Box sx={{ mt: 1 }}>
+              <Readable show={withImage}>
+                <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {notes}
+                </Typography>
+              </Readable>
+            </Box>
+          )}
         </Box>
         {revealed && (
           <>
@@ -435,7 +459,7 @@ function StudyPrefsDialog({ open, defaults, onStart }) {
     {
       key: 'notes',
       label: 'Notlar',
-      description: 'Kartın notu, cevapla birlikte görünsün.',
+      description: 'Kartın notu, cevap açılmadan da görünsün.',
       checked: notes,
       onChange: setNotes,
     },
@@ -1297,6 +1321,11 @@ function StudySession() {
 
           {activity === 'listen' && (
             <Card sx={{ position: 'relative', borderTop: `3px solid ${accent}`, p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
+              <CardToggles
+                notes={current.notes}
+                showNotes={showNotes}
+                onToggleNotes={() => setShowNotes((v) => !v)}
+              />
               {!answered ? (
                 <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, py: 1 }}>
                   <Typography variant="overline" color="text.secondary">
@@ -1312,6 +1341,11 @@ function StudySession() {
                   <Typography variant="body2" color="text.secondary">
                     Duyduğun {language.label} kelimeyi yaz
                   </Typography>
+                  {current.notes && showNotes && (
+                    <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-wrap' }}>
+                      {current.notes}
+                    </Typography>
+                  )}
                 </Box>
               ) : (
                 <>
@@ -1328,11 +1362,6 @@ function StudySession() {
                   <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                     <Term text={current.front} foreign language={language} align="center" />
                   </Box>
-                  <CardToggles
-                    notes={current.notes}
-                    showNotes={showNotes}
-                    onToggleNotes={() => setShowNotes((v) => !v)}
-                  />
                   <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
                     {current.back}
                   </Typography>
